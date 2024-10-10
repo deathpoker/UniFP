@@ -33,10 +33,10 @@
 import numpy as np
 
 from isaacgym import terrain_utils
-from humanoid.envs.base.legged_robot_config import LeggedRobotCfg
+from legged_gym.envs.base.legged_robot_config_humanoidgym import LeggedRobotHumanoidGymCfg
 
 class Terrain:
-    def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
+    def __init__(self, cfg: LeggedRobotHumanoidGymCfg.terrain, num_robots) -> None:
 
         self.cfg = cfg
         self.num_robots = num_robots
@@ -187,7 +187,7 @@ def pit_terrain(terrain, depth, platform_size=1.):
     terrain.height_field_raw[x1:x2, y1:y2] = -depth
 
 class HumanoidTerrain(Terrain):
-    def __init__(self, cfg: LeggedRobotCfg.terrain, num_robots) -> None:
+    def __init__(self, cfg: LeggedRobotHumanoidGymCfg.terrain, num_robots) -> None:
         super().__init__(cfg, num_robots)
 
     def randomized_terrain(self):

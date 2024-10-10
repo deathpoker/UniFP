@@ -69,9 +69,9 @@ class G1HumanoidGymCfg(LeggedRobotHumanoidGymCfg):
         fix_base_link = False
 
     class terrain(LeggedRobotHumanoidGymCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
-        curriculum = False
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
+        curriculum = True
         # rough terrain only:
         measure_heights = False
         static_friction = 1.0
