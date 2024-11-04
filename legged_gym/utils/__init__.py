@@ -4,4 +4,5 @@ from .task_registry_humanoidgym import task_registry_humanoidgym
 from .logger import Logger
 from .math import *
 from .terrain import Terrain
-from .terrain_humanoidgym import Terrain
+from .terrain_humanoidgym import HumanoidTerrain
+from .terrain_b2 import Terrain_Perlin

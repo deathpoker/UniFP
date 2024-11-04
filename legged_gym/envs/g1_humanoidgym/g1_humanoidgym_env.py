@@ -219,10 +219,10 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         self.privileged_obs_buf = torch.cat((
             self.command_input,  # 2 + 3
             (self.dof_pos - self.default_joint_pd_target) * \
-            self.obs_scales.dof_pos,  # 12
-            self.dof_vel * self.obs_scales.dof_vel,  # 12
-            self.actions,  # 12
-            diff,  # 12
+            self.obs_scales.dof_pos,  # 29
+            self.dof_vel * self.obs_scales.dof_vel,  # 29
+            self.actions,  # 29
+            diff,  # 29
             self.base_lin_vel * self.obs_scales.lin_vel,  # 3
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
@@ -236,9 +236,9 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
 
         obs_buf = torch.cat((
             self.command_input,  # 5 = 2D(sin cos) + 3D(vel_x, vel_y, aug_vel_yaw)
-            q,    # 12D
-            dq,  # 12D
-            self.actions,   # 12D
+            q,    # 29D
+            dq,  # 29D
+            self.actions,   # 29D
             self.base_ang_vel * self.obs_scales.ang_vel,  # 3
             self.base_euler_xyz * self.obs_scales.quat,  # 3
         ), dim=-1)
