@@ -37,6 +37,7 @@ import statistics
 from collections import deque
 from datetime import datetime
 from .ppo import PPO
+from .ppo_lcp import PPOLCP
 from .actor_critic import ActorCritic
 from legged_gym.algo.vec_env import VecEnv
 from torch.utils.tensorboard import SummaryWriter
@@ -160,7 +161,7 @@ class OnPolicyRunner:
                 start = stop
                 self.alg.compute_returns(critic_obs)
 
-            mean_value_loss, mean_surrogate_loss = self.alg.update()
+            mean_value_loss, mean_surrogate_loss, *_, = self.alg.update()
             stop = time.time()
             learn_time = stop - start
             if self.log_dir is not None:

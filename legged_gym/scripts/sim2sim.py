@@ -157,7 +157,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Deployment script.')
-    parser.add_argument('--load_model', type=str, required=True,
+    parser.add_argument('--load_model', default="/home/zhipy/project/unitree_rl_gym/logs/g1_humanoidgym_with_arm/exported/policies/policy_1.pt", type=str,
                         help='Run to load from.')
     parser.add_argument('--terrain', default=True, action='store_true', help='terrain or plane')
     args = parser.parse_args()

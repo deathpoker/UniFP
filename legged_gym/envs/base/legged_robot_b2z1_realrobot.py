@@ -20,6 +20,8 @@ from legged_gym.utils.terrain_b2 import Terrain, Terrain_Perlin
 
 from legged_gym.envs.b2.b2z1_realrobot_config import B2Z1RealRobotRoughCfg
 
+import matplotlib.pyplot as plt
+
 def get_euler_xyz_tensor(quat):
     r, p, w = get_euler_xyz(quat)
     # stack r, p, w in dim1
@@ -40,18 +42,34 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             device_type (string): 'cuda' or 'cpu'
             device_id (int): 0, 1, ...
             headless (bool): Run without rendering if True
-        """
-        if cfg.env.observe_gait_commands:
-            print("||||||||||Observe gait commands!")
-            cfg.env.num_single_obs += 5 # gait_indices=1, clock_phase=4
-            cfg.env.single_num_privileged_obs += 5 # gait_indices=1, clock_phase=4
-            cfg.env.num_observations = int(cfg.env.frame_stack * cfg.env.num_single_obs)
-            cfg.env.num_privileged_obs = int(cfg.env.c_frame_stack * cfg.env.single_num_privileged_obs)
-        
+        """ 
         self.cfg = cfg
         self.sim_params = sim_params
         self.height_samples = None
         self.debug_viz = True
+        self.debug_curve = False
+        if self.debug_curve:
+            self.FL_joint_index = 2
+            self.FR_joint_index = 5
+            self.RL_joint_index = 8
+            self.RR_joint_index = 11
+            # 初始化绘图
+            plt.ion()  # 打开交互模式
+            fig, ((self.ax1, self.ax4), (self.ax2, self.ax5), (self.ax3, self.ax6)) = plt.subplots(3, 2)
+            self.t_data, self.FL_action, self.FL_state, self.FL_ref, self.FR_action, self.FR_state, self.FR_ref = [], [], [], [], [], [], []
+            self.RL_action, self.RL_state, self.RL_ref, self.RR_action, self.RR_state, self.RR_ref = [], [], [], [], [], []
+            self.FL_action_line, = self.ax1.plot([], [], 'b-', label="FL_action")       
+            self.FL_state_line, = self.ax1.plot([], [], 'r-', label="FL_state")
+            self.FL_ref_line, = self.ax1.plot([], [], 'y-', label="FL_ref")
+            self.FR_action_line, = self.ax2.plot([], [], 'b-', label="FR_action")
+            self.FR_state_line, = self.ax2.plot([], [], 'r-', label="FR_state")
+            self.FR_ref_line, = self.ax2.plot([], [], 'y-', label="FR_ref")
+            self.RL_action_line, = self.ax4.plot([], [], 'b-', label="RL_action")       
+            self.RL_state_line, = self.ax4.plot([], [], 'r-', label="RL_state")
+            self.RL_ref_line, = self.ax4.plot([], [], 'y-', label="RL_ref")
+            self.RR_action_line, = self.ax5.plot([], [], 'b-', label="RR_action")
+            self.RR_state_line, = self.ax5.plot([], [], 'r-', label="RR_state")
+            self.RR_ref_line, = self.ax5.plot([], [], 'y-', label="RR_ref")
         self.init_done = False
         self._parse_cfg(self.cfg)
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
@@ -173,77 +191,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             self._draw_ee_goal_curr()
             self._draw_ee_goal_traj()
             self._draw_collision_bbox()
-
-    def _step_contact_targets(self):
-        if self.cfg.env.observe_gait_commands:
-            frequencies = self.cfg.env.frequencies
-            phases = 0.5
-            offsets = 0
-            bounds = 0
-            durations = 0.5
-            self.gait_indices = torch.remainder(self.gait_indices + self.dt * frequencies, 1.0)
-            self.gait_indices[~self.get_walking_cmd_mask()] = 0
-
-            foot_indices = [self.gait_indices + phases + offsets + bounds,
-                            self.gait_indices + offsets,
-                            self.gait_indices + bounds,
-                            self.gait_indices + phases]
-
-            self.foot_indices = torch.remainder(torch.cat([foot_indices[i].unsqueeze(1) for i in range(4)], dim=1), 1.0)
-
-            for idxs in foot_indices:
-                stance_idxs = torch.remainder(idxs, 1) < durations
-                swing_idxs = torch.remainder(idxs, 1) > durations
-
-                idxs[stance_idxs] = torch.remainder(idxs[stance_idxs], 1) * (0.5 / durations)
-                idxs[swing_idxs] = 0.5 + (torch.remainder(idxs[swing_idxs], 1) - durations) * (
-                            0.5 / (1 - durations))
-
-            self.clock_inputs[:, 0] = torch.sin(2 * np.pi * foot_indices[0])
-            self.clock_inputs[:, 1] = torch.sin(2 * np.pi * foot_indices[1])
-            self.clock_inputs[:, 2] = torch.sin(2 * np.pi * foot_indices[2])
-            self.clock_inputs[:, 3] = torch.sin(2 * np.pi * foot_indices[3])
-
-            self.doubletime_clock_inputs[:, 0] = torch.sin(4 * np.pi * foot_indices[0])
-            self.doubletime_clock_inputs[:, 1] = torch.sin(4 * np.pi * foot_indices[1])
-            self.doubletime_clock_inputs[:, 2] = torch.sin(4 * np.pi * foot_indices[2])
-            self.doubletime_clock_inputs[:, 3] = torch.sin(4 * np.pi * foot_indices[3])
-
-            self.halftime_clock_inputs[:, 0] = torch.sin(np.pi * foot_indices[0])
-            self.halftime_clock_inputs[:, 1] = torch.sin(np.pi * foot_indices[1])
-            self.halftime_clock_inputs[:, 2] = torch.sin(np.pi * foot_indices[2])
-            self.halftime_clock_inputs[:, 3] = torch.sin(np.pi * foot_indices[3])
-
-            # von mises distribution
-            kappa = self.cfg.rewards.kappa_gait_probs
-            smoothing_cdf_start = torch.distributions.normal.Normal(0,
-                                                                    kappa).cdf  # (x) + torch.distributions.normal.Normal(1, kappa).cdf(x)) / 2
-
-            smoothing_multiplier_FL = (smoothing_cdf_start(torch.remainder(foot_indices[0], 1.0)) * (
-                    1 - smoothing_cdf_start(torch.remainder(foot_indices[0], 1.0) - 0.5)) +
-                                       smoothing_cdf_start(torch.remainder(foot_indices[0], 1.0) - 1) * (
-                                               1 - smoothing_cdf_start(
-                                           torch.remainder(foot_indices[0], 1.0) - 0.5 - 1)))
-            smoothing_multiplier_FR = (smoothing_cdf_start(torch.remainder(foot_indices[1], 1.0)) * (
-                    1 - smoothing_cdf_start(torch.remainder(foot_indices[1], 1.0) - 0.5)) +
-                                       smoothing_cdf_start(torch.remainder(foot_indices[1], 1.0) - 1) * (
-                                               1 - smoothing_cdf_start(
-                                           torch.remainder(foot_indices[1], 1.0) - 0.5 - 1)))
-            smoothing_multiplier_RL = (smoothing_cdf_start(torch.remainder(foot_indices[2], 1.0)) * (
-                    1 - smoothing_cdf_start(torch.remainder(foot_indices[2], 1.0) - 0.5)) +
-                                       smoothing_cdf_start(torch.remainder(foot_indices[2], 1.0) - 1) * (
-                                               1 - smoothing_cdf_start(
-                                           torch.remainder(foot_indices[2], 1.0) - 0.5 - 1)))
-            smoothing_multiplier_RR = (smoothing_cdf_start(torch.remainder(foot_indices[3], 1.0)) * (
-                    1 - smoothing_cdf_start(torch.remainder(foot_indices[3], 1.0) - 0.5)) +
-                                       smoothing_cdf_start(torch.remainder(foot_indices[3], 1.0) - 1) * (
-                                               1 - smoothing_cdf_start(
-                                           torch.remainder(foot_indices[3], 1.0) - 0.5 - 1)))
-
-            self.desired_contact_states[:, 0] = smoothing_multiplier_FL
-            self.desired_contact_states[:, 1] = smoothing_multiplier_FR
-            self.desired_contact_states[:, 2] = smoothing_multiplier_RL
-            self.desired_contact_states[:, 3] = smoothing_multiplier_RR
+            self._draw_curve()
 
     def check_termination(self):
         """ Check if environments need to be reset
@@ -282,6 +230,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
+        self.gait_indices[env_ids] = 0
         self.reset_buf[env_ids] = 1
         self.goal_timer[env_ids] = 0.
         # fill extras
@@ -335,18 +284,49 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
     def compute_observations(self):
         """ Computes observations
         """
+
+        phase = self._get_phase()
+        self.compute_ref_state()
+
+        sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(1)
+        cos_pos = torch.cos(2 * torch.pi * phase).unsqueeze(1)
+
+
+        sin_pos_l = sin_pos.clone() + self.cfg.rewards.target_joint_pos_thd
+        sin_pos_r = sin_pos.clone() - self.cfg.rewards.target_joint_pos_thd
+        scale = 1 / (1 - self.cfg.rewards.target_joint_pos_thd)
+
+        sin_pos_l[sin_pos_l > 0] = 0
+        sin_pos_r[sin_pos_r < 0] = 0
+        sin_pos_l = sin_pos_l * scale
+        sin_pos_r  = sin_pos_r * scale
+
+
+        stance_mask = self._get_gait_phase()
+        contact_mask = self.contact_forces[:, self.feet_indices, 2] > 5.
+
+        diff = self.dof_pos[:, :12] - self.ref_dof_pos
+
         arm_base_pos = self.base_pos + quat_apply(self.base_yaw_quat, self.arm_base_offset)
         ee_goal_local_cart = quat_rotate_inverse(self.base_quat, self.curr_ee_goal_cart_world - arm_base_pos)
 
-        self.privileged_obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,
-                                    self.base_ang_vel  * self.obs_scales.ang_vel,
-                                    self.projected_gravity,
+        self.privileged_obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel, # 3
+                                    self.base_ang_vel  * self.obs_scales.ang_vel, # 3
+                                    self.projected_gravity, # 3
                                     ((self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos)[:, :-self.cfg.env.num_gripper_joints], # dim 18
                                     (self.dof_vel * self.obs_scales.dof_vel)[:, :-self.cfg.env.num_gripper_joints], # dim 18
-                                    self.actions[:, :12],
-                                    self.commands[:, :3] * self.commands_scale,
+                                    diff,
+                                    self.actions[:, :12], # 12
+                                    sin_pos, # 1
+                                    cos_pos, # 1
+                                    self.commands[:, :3] * self.commands_scale, # 3
                                     ee_goal_local_cart,  # dim 3 position
-                                    0*self.curr_ee_goal_sphere  # dim 3 orientation
+                                    0*self.curr_ee_goal_sphere,  # dim 3 orientation
+                                    self.mass_params_tensor, # 22
+                                    self.friction_coeffs_tensor, #  1
+                                    self.motor_strength[:, :12] - 1, # 12
+                                    stance_mask, # 4
+                                    contact_mask, # 4
                                     ),dim=-1)
 
         obs_buf = torch.cat(( self.get_body_orientation(),  # dim 2
@@ -354,16 +334,13 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
                                     ((self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos)[:, :-self.cfg.env.num_gripper_joints], # dim 18
                                     (self.dof_vel * self.obs_scales.dof_vel)[:, :-self.cfg.env.num_gripper_joints], # dim 18
                                     self.actions[:, :12], # dim 12
+                                    sin_pos, # 1
+                                    cos_pos, # 1
                                     self.commands[:, :3] * self.commands_scale, # dim 3
                                     ee_goal_local_cart,  # dim 3 position
                                     0*self.curr_ee_goal_sphere  # dim 3 orientation
                                     ),dim=-1)
         
-        if self.cfg.env.observe_gait_commands:
-            self.privileged_obs_buf = torch.cat((self.privileged_obs_buf,
-                                      self.gait_indices.unsqueeze(1), self.clock_inputs), dim=-1)
-            obs_buf = torch.cat((obs_buf,
-                                      self.gait_indices.unsqueeze(1), self.clock_inputs), dim=-1)
         # add perceptive inputs if not blind
         # add noise if needed
         if self.add_noise:  
@@ -397,6 +374,90 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
+    def _draw_curve(self):
+        if self.debug_curve:
+
+            # 设置绘图范围
+            self.ax1.set_ylim(self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()+1.5)
+            self.ax1.set_title(f"FL_joint_{self.FL_joint_index}")
+            self.ax1.set_xlabel("time / s")
+            self.ax1.legend(loc="upper right")
+            self.ax2.set_ylim(self.default_dof_pos_wo_gripper[0, self.FR_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.FR_joint_index].item()+1.5)
+            self.ax2.set_title(f"FL_joint_{self.FR_joint_index}")
+            self.ax2.set_xlabel("time / s")
+            self.ax2.legend(loc="upper right")
+
+            self.ax3.set_ylim(self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()+1.5)
+            self.ax3.set_title(f"front_ref_motion")
+            self.ax3.set_xlabel("time / s")
+            self.ax3.legend(loc="upper right")
+
+            self.ax4.set_ylim(self.default_dof_pos_wo_gripper[0, self.RL_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.RL_joint_index].item()+1.5)
+            self.ax4.set_title(f"FL_joint_{self.RL_joint_index}")
+            self.ax4.set_xlabel("time / s")
+            self.ax4.legend(loc="upper right")
+            self.ax5.set_ylim(self.default_dof_pos_wo_gripper[0, self.RR_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.RR_joint_index].item()+1.5)
+            self.ax5.set_title(f"FL_joint_{self.RR_joint_index}")
+            self.ax5.set_xlabel("time / s")
+            self.ax5.legend(loc="upper right")
+
+            self.ax6.set_ylim(-.5, 1.5)
+            self.ax6.set_title(f"ront_ref_motion")
+            self.ax6.set_xlabel("time / s")
+            self.ax6.legend(loc="upper right")
+
+            self.t_data.append(self.global_steps)
+            self.FL_action.append(self.actions[0, self.FL_joint_index].item() * self.cfg.control.action_scale + self.default_dof_pos_wo_gripper[0, self.FR_joint_index].item())
+            self.FL_state.append(self.dof_pos[0, self.FL_joint_index].item())
+            self.FL_ref.append(self.ref_dof_pos[0, self.FL_joint_index].item())
+            self.FR_action.append(self.actions[0, self.FR_joint_index].item() * self.cfg.control.action_scale + self.default_dof_pos_wo_gripper[0, self.FR_joint_index].item())
+            self.FR_state.append(self.dof_pos[0, self.FR_joint_index].item())
+            self.FR_ref.append(self.ref_dof_pos[0, self.FR_joint_index].item())
+
+            # stand_mask = self._get_gait_phase()
+            self.RL_action.append(self.actions[0, self.RL_joint_index].item() * self.cfg.control.action_scale + self.default_dof_pos_wo_gripper[0, self.RR_joint_index].item())
+            self.RL_state.append(self.dof_pos[0, self.RL_joint_index].item())
+            self.RL_ref.append(self.ref_dof_pos[0, self.RL_joint_index].item())
+            self.RR_action.append(self.actions[0, self.RR_joint_index].item() * self.cfg.control.action_scale + self.default_dof_pos_wo_gripper[0, self.RR_joint_index].item())
+            self.RR_state.append(self.dof_pos[0, self.RR_joint_index].item())
+            self.RR_ref.append(self.ref_dof_pos[0, self.RR_joint_index].item())
+            
+            if len(self.t_data) > 100:
+                self.t_data.pop(0)
+                self.FL_action.pop(0)
+                self.FL_state.pop(0)
+                self.FL_ref.pop(0)
+                self.FR_action.pop(0)
+                self.FR_state.pop(0)
+                self.FR_ref.pop(0)
+                self.RL_action.pop(0)
+                self.RL_state.pop(0)
+                self.RL_ref.pop(0)
+                self.RR_action.pop(0)
+                self.RR_state.pop(0)
+                self.RR_ref.pop(0)
+            # 更新绘图
+            self.FL_action_line.set_data(self.t_data, self.FL_action)
+            self.FL_state_line.set_data(self.t_data, self.FL_state)
+            self.FL_ref_line.set_data(self.t_data, self.FL_ref)
+            self.FR_action_line.set_data(self.t_data, self.FR_action)
+            self.FR_state_line.set_data(self.t_data, self.FR_state)
+            self.FR_ref_line.set_data(self.t_data, self.FR_ref)
+
+            self.RL_action_line.set_data(self.t_data, self.RL_action)
+            self.RL_state_line.set_data(self.t_data, self.RL_state)
+            self.RL_ref_line.set_data(self.t_data, self.RL_ref)
+            self.RR_action_line.set_data(self.t_data, self.RR_action)
+            self.RR_state_line.set_data(self.t_data, self.RR_state)
+            self.RR_ref_line.set_data(self.t_data, self.RR_ref)
+            self.ax1.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            self.ax2.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            self.ax3.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            self.ax4.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            self.ax5.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            self.ax6.set_xlim(max(0, self.global_steps - 100), self.global_steps + 1)
+            plt.pause(0.001)
+            print(self.commands)
     def _draw_collision_bbox(self):
         # center = self.get_ee_goal_spherical_center()
         # bbox0 = center + quat_apply(self.base_yaw_quat, self.collision_upper_limits)
@@ -501,6 +562,8 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
                 props[s].friction = self.friction_coeffs[env_id]
 
             self.env_frictions[env_id] = self.friction_coeffs[env_id]
+        else:
+            self.friction_coeffs = torch.ones([self.num_envs, 1, 1])
         return props
     
 
@@ -542,8 +605,21 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         # randomize base mass
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
-            props[0].mass += np.random.uniform(rng[0], rng[1])
-        self.body_mass[env_id] = props[0].mass
+            rand_mass = np.random.uniform(rng[0], rng[1], size=(1, ))
+            props[0].mass += rand_mass
+        else:
+            rand_mass = np.zeros(1)
+
+        if self.cfg.domain_rand.randomize_leg_mass:
+            rng_link = self.cfg.domain_rand.leg_mass_scale_range
+            rand_leg_masses = []
+            for idx in range(17):
+                rand_link_mass = np.random.uniform(rng_link[0], rng_link[1], size=(1, )) * props[idx].mass
+                props[idx].mass += rand_link_mass
+                rand_leg_masses.append(rand_link_mass)
+            rand_leg_masses = np.concatenate(rand_leg_masses)
+        else:
+            rand_leg_masses = np.zeros(17)
 
         if self.cfg.domain_rand.randomize_gripper_mass:
             gripper_rng_mass = self.cfg.domain_rand.gripper_added_mass_range
@@ -560,7 +636,9 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             props[1].com += gymapi.Vec3(*rand_com)
         else:
             rand_com = np.zeros(3)
-        return props
+        
+        mass_params = np.concatenate([rand_mass, rand_com, gripper_rand_mass, rand_leg_masses])
+        return props, mass_params
     
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
@@ -573,6 +651,12 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
 
         if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
+
+    def _step_contact_targets(self):
+        cycle_time = self.cfg.rewards.cycle_time
+        standing_mask = ~self.get_walking_cmd_mask()
+        self.gait_indices = torch.remainder(self.gait_indices + self.dt / cycle_time, 1.0)
+        self.gait_indices[standing_mask] = 0
 
     def _resample_commands(self, env_ids):
         """ Randommly select commands of some environments
@@ -615,8 +699,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             [torch.Tensor]: Torques sent to the simulation
         """
         #pd controller
-        actions_scaled = actions * self.cfg.control.action_scale
-        
+        actions_scaled = actions * self.motor_strength * self.cfg.control.action_scale
 
         default_torques = self.p_gains * (actions_scaled + self.default_dof_pos_wo_gripper - self.dof_pos_wo_gripper) - self.d_gains * self.dof_vel_wo_gripper
         # torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
@@ -802,8 +885,8 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         noise_vec[2:5] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[5:23] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[23:41] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[41:52] = 0. # previous actions
-        noise_vec[52:55] = 0. # commands
+        noise_vec[41:53] = 0. # previous actions
+        noise_vec[53:58] = 0. # commands
 
         return noise_vec
 
@@ -947,18 +1030,10 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
                     print(f"PD gain of joint {name} were not defined, setting them to zero")
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
         self.default_dof_pos_wo_gripper = self.default_dof_pos[:, :-self.cfg.env.num_gripper_joints]
-
+        
         # gait
-        self.desired_contact_states = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device,
-                                                  requires_grad=False, )
         self.gait_indices = torch.zeros(self.num_envs, dtype=torch.float, device=self.device,
                                         requires_grad=False)
-        self.clock_inputs = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device,
-                                        requires_grad=False)
-        self.doubletime_clock_inputs = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device,
-                                                   requires_grad=False)
-        self.halftime_clock_inputs = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device,
-                                                 requires_grad=False)
         
         self.foot_velocities = self.rigid_state.view(self.num_envs, self.num_bodies, 13)[:,
                                self.feet_indices,
@@ -1085,7 +1160,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         self.envs = []
         self.env_frictions = torch.zeros(self.num_envs, 1, dtype=torch.float32, device=self.device)
 
-        self.body_mass = torch.zeros(self.num_envs, 1, dtype=torch.float32, device=self.device, requires_grad=False)
+        self.mass_params_tensor = torch.zeros(self.num_envs, 22, dtype=torch.float, device=self.device, requires_grad=False)
         
         for i in range(self.num_envs):
             arm_kp = 400
@@ -1107,8 +1182,11 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             dof_props = self._process_dof_props(dof_props_asset, i)
             self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
             body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
-            body_props = self._process_rigid_body_props(body_props, i)
+            body_props, mass_params = self._process_rigid_body_props(body_props, i)
             self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
+
+            self.mass_params_tensor[i, :] = torch.from_numpy(mass_params).to(self.device)
+
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
 
@@ -1128,6 +1206,17 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
+
+        self.friction_coeffs_tensor = self.friction_coeffs.to(self.device).squeeze(-1)
+
+        if self.cfg.domain_rand.randomize_motor:
+            self.motor_strength = torch.cat([
+                    torch_rand_float(self.cfg.domain_rand.leg_motor_strength_range[0], self.cfg.domain_rand.leg_motor_strength_range[1], (self.num_envs, 12), device=self.device),
+                    torch_rand_float(self.cfg.domain_rand.arm_motor_strength_range[0], self.cfg.domain_rand.arm_motor_strength_range[1], (self.num_envs, 6), device=self.device)
+                ], dim=1)
+        else:
+            self.motor_strength = torch.ones(self.num_envs, self.num_torques, device=self.device)
+        
         hip_names = ["FR_hip_joint", "FL_hip_joint", "RR_hip_joint", "RL_hip_joint"]
         self.hip_indices = torch.zeros(len(hip_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i, name in enumerate(hip_names):
@@ -1175,9 +1264,65 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         walking_mask1 = torch.abs(self.commands[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip
         walking_mask2 = torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip
         walking_mask = walking_mask0 | walking_mask1 | walking_mask2
+
+        walking_mask = walking_mask | (self.gait_indices >= self.dt / self.cfg.rewards.cycle_time)
         if return_all:
             return walking_mask0, walking_mask1, walking_mask2, walking_mask
         return walking_mask
+
+
+    def  _get_phase(self):
+        phase = self.gait_indices
+        return phase
+
+    def _get_gait_phase(self):
+        # return float mask 1 is stance, 0 is swing
+        phase = self._get_phase()
+        sin_pos = torch.sin(2 * torch.pi * phase)
+
+        sin_pos_l = sin_pos.clone() + self.cfg.rewards.target_joint_pos_thd
+        sin_pos_r = sin_pos.clone() - self.cfg.rewards.target_joint_pos_thd
+        
+        # Add double support phase
+        stance_mask = torch.zeros((self.num_envs, 4), device=self.device)
+        # FL RR foot stance
+        stance_mask[:, 0] = sin_pos_l >= 0
+        stance_mask[:, 3] = sin_pos_l >= 0
+        # FR RL foot stance
+        stance_mask[:, 1] = sin_pos_r < 0
+        stance_mask[:, 2] = sin_pos_r < 0
+        # Double support phase
+        # stance_mask[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = 1
+
+        return stance_mask
+    
+
+    def compute_ref_state(self):
+        phase = self._get_phase()
+        sin_pos = torch.sin(2 * torch.pi * phase)
+        sin_pos_l = sin_pos.clone() + self.cfg.rewards.target_joint_pos_thd
+        sin_pos_r = sin_pos.clone() - self.cfg.rewards.target_joint_pos_thd
+        repeat_default_pos = self.default_dof_pos[:, :12].repeat(self.num_envs, 1)
+        # self.ref_dof_pos = torch.zeros_like(self.dof_pos)
+        self.ref_dof_pos = repeat_default_pos.clone()
+        scale_1 = self.cfg.rewards.target_joint_pos_scale / (1 - self.cfg.rewards.target_joint_pos_thd)
+        scale_2 = scale_1 * 2
+        # left foot stance phase set to default joint pos
+        sin_pos_l[sin_pos_l > 0] = sin_pos_l[sin_pos_l > 0] * (1 - self.cfg.rewards.target_joint_pos_thd) / (1 + self.cfg.rewards.target_joint_pos_thd) * 0.0
+        self.ref_dof_pos[:, 1] -= sin_pos_l * scale_1 # FL_thigh_joint
+        self.ref_dof_pos[:, 2] += sin_pos_l * scale_2 # FL_calf_joint
+        self.ref_dof_pos[:, 10] -= sin_pos_l * scale_1 # RR_thigh_joint
+        self.ref_dof_pos[:, 11] += sin_pos_l * scale_2 # RR_calf_joint
+        # self.ref_dof_pos[:, 4] += sin_pos_l * scale_1 # left_ankle
+        # right foot stance phase set to default joint pos
+        sin_pos_r[sin_pos_r < 0] = sin_pos_r[sin_pos_r < 0] * (1 - self.cfg.rewards.target_joint_pos_thd) / (1 + self.cfg.rewards.target_joint_pos_thd) * 0.0
+        self.ref_dof_pos[:, 4] += sin_pos_r * scale_1 # FR_thigh_joint
+        self.ref_dof_pos[:, 5] -= sin_pos_r * scale_2 # FR_calf_joint
+        self.ref_dof_pos[:, 7] += sin_pos_r * scale_1 # RL_thigh_joint
+        self.ref_dof_pos[:, 8] -= sin_pos_r * scale_2 # RL_calf_joint
+        # self.ref_dof_pos[:, 9] -= sin_pos_r * scale_1 # right_ankle
+        # stand still phase
+        # self.ref_dof_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = repeat_default_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd]
 
     def subscribe_viewer_keyboard_events(self):
         super().subscribe_viewer_keyboard_events()
@@ -1264,10 +1409,10 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
 
     def _reward_dof_vel(self):
         # Penalize dof velocities
-        return torch.sum(torch.square(self.dof_vel), dim=1)
+        return torch.sum(torch.square(self.dof_vel)[:, :12], dim=1)
     
     def _reward_energy_square(self):
-        energy = torch.sum(torch.square(self.torques * self.dof_vel), dim=1)
+        energy = torch.sum(torch.square(self.torques * self.dof_vel)[:, :12], dim=1)
         return energy
     
     def _reward_dof_acc(self):
@@ -1308,44 +1453,6 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
-    def _reward_tracking_contacts_shaped_force(self):
-        if not self.cfg.env.observe_gait_commands:
-            return 0
-        foot_forces = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
-        
-        mean_force = torch.mean(foot_forces, dim=1, keepdim=True)  # 找到每一批次中的最大力
-        normalized_foot_forces = foot_forces / (mean_force + 1e-6)  # 避免除零
-        
-        desired_contact = self.desired_contact_states
-
-        reward = 0
-        for i in range(4):
-            reward += - (1 - desired_contact[:, i]) * (
-                        1 - torch.exp(-1 * normalized_foot_forces[:, i] ** 2 / self.cfg.rewards.gait_force_sigma))
-        
-        # cmd_stop_flag = ~self.get_walking_cmd_mask()
-        # reward[cmd_stop_flag] = 0
-        
-        return reward / 4
-
-    def _reward_tracking_contacts_shaped_vel(self):
-        if not self.cfg.env.observe_gait_commands:
-            return 0
-        foot_velocities = torch.norm(self.foot_velocities, dim=2).view(self.num_envs, -1)
-        mean_velocity = torch.mean(foot_velocities, dim=1, keepdim=True)  # 找到每一批次中的最大力
-        normalized_foot_velocities = foot_velocities / (mean_velocity + 1e-6)  # 避免除零
-
-        desired_contact = self.desired_contact_states
-        reward = 0
-        for i in range(4):
-            reward += - (desired_contact[:, i] * (
-                        1 - torch.exp(-1 * normalized_foot_velocities[:, i] ** 2 / self.cfg.rewards.gait_vel_sigma)))
-            
-        # cmd_stop_flag = ~self.get_walking_cmd_mask()
-        # reward[cmd_stop_flag] = 0
-        
-        return reward / 4
-    
     def _reward_feet_vel_xy(self):
          # Penalize xy axis feet linear velocity
         foot_velocities = torch.norm(self.foot_velocities[:, :, :2], dim=2).view(self.num_envs, -1)
@@ -1368,14 +1475,14 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
     def _reward_feet_height(self):
         feet_height = self.rigid_state[:, self.feet_indices[:2], 2] # Only front feet
         # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
-        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.10, max=0)
+        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.07, max=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
         return rew
     
     def _reward_feet_height_high(self):
         feet_height = self.rigid_state[:, self.feet_indices, 2]
-        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.15, min=0)
+        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.12, min=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
         return rew
@@ -1426,6 +1533,81 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
+    def _reward_walking_ref_dof(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.2)
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+    
+    def _reward_walking_ref_swing_dof(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        stand_mask = self._get_gait_phase()
+        stand_mask = torch.stack([stand_mask, stand_mask,stand_mask],2).reshape(self.num_envs, 12)
+        dof_error = torch.abs(joint_pos - pos_target)[:, :12]
+        dof_error[stand_mask==1] = 0
+        dof_error = torch.sum(dof_error, dim=1)
+        rew = torch.exp(-dof_error*0.2)
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+    
+    def _reward_walking_ref_stand_dof(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        stand_mask = self._get_gait_phase()
+        stand_mask = torch.stack([stand_mask, stand_mask,stand_mask],2).reshape(self.num_envs, 12)
+        dof_error = torch.abs(joint_pos - pos_target)[:, :12]
+        dof_error[stand_mask==0] = 0
+        dof_error = torch.sum(dof_error, dim=1)
+        rew = torch.exp(-dof_error*0.5) - 1
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+    
+    def _reward_ref_dof_leg(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.1)
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+        
+    def _reward_joint_pos(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        diff = (joint_pos - pos_target)
+        r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(diff, dim=1).clamp(0, 0.5)
+        r[~self.get_walking_cmd_mask()] = 0.
+        return r
+    
     def _reward_hip_pos(self):
         rew = torch.sum(torch.square(self.dof_pos[:, self.hip_indices] - self.default_dof_pos[:, self.hip_indices]), dim=1)
         return rew
@@ -1445,3 +1627,38 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
     
     def _reward_alive(self):
         return 1.
+    
+    def _reward_feet_drag(self):
+        feet_xyz_vel = torch.abs(self.rigid_state[:, self.feet_indices, 7:10]).sum(dim=-1)
+        foot_forces = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
+        dragging_vel = foot_forces * feet_xyz_vel
+        rew = dragging_vel.sum(dim=-1)
+        return rew
+
+    
+    def _reward_delta_torques(self):
+        rew = torch.sum(torch.square(self.torques - self.last_torques)[:, :12], dim=1)
+        return rew
+    
+    def _reward_action_smoothness(self):
+        """
+        Encourages smoothness in the robot's actions by penalizing large differences between consecutive actions.
+        This is important for achieving fluid motion and reducing mechanical stress.
+        """
+        
+        term_1 = torch.sum(torch.square(
+            self.last_actions - self.actions)[:, :12], dim=1)
+        term_2 = torch.sum(torch.square(
+            self.actions + self.last_last_actions - 2 * self.last_actions)[:, :12], dim=1)
+        term_3 = 0.05 * torch.sum(torch.abs(self.actions)[:, :12], dim=1)
+        return term_1 + term_2 + term_3
+    
+    def _reward_feet_contact_number(self):
+        """
+        Calculates a reward based on the number of feet contacts aligning with the gait phase. 
+        Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
+        """
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        stance_mask = self._get_gait_phase()
+        reward = torch.where(contact == stance_mask, 1, -0.3)
+        return torch.mean(reward, dim=1)

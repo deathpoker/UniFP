@@ -34,6 +34,7 @@ from isaacgym import gymapi
 from isaacgym import gymutil
 import numpy as np
 import torch
+import time
 
 # Base class for RL tasks
 
@@ -58,6 +59,8 @@ class BaseTaskHumanoidGym():
 
         # graphics device for rendering, -1 for no rendering
         self.graphics_device_id = self.sim_device_id
+        if self.headless == True:
+            self.graphics_device_id = -1
 
         self.num_envs = cfg.env.num_envs
         self.num_obs = cfg.env.num_observations
@@ -115,6 +118,8 @@ class BaseTaskHumanoidGym():
             camera_handle = self.gym.create_camera_sensor(
                 self.envs[0], camera_properties)
             self.camera_handle = camera_handle
+
+            self.subscribe_viewer_keyboard_events()
         else:
             # pass
             camera_properties = gymapi.CameraProperties()
@@ -124,9 +129,26 @@ class BaseTaskHumanoidGym():
                 self.envs[0], camera_properties)
             self.camera_handle = camera_handle
 
+    def subscribe_viewer_keyboard_events(self):
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_ESCAPE, "QUIT")
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_V, "toggle_viewer_sync")
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_F, "free_cam")
+        for i in range(9):
+            self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, getattr(gymapi, "KEY_"+str(i)), "lookat"+str(i))
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_LEFT_BRACKET, "prev_id")
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_RIGHT_BRACKET, "next_id")
+        self.gym.subscribe_viewer_keyboard_event(
+            self.viewer, gymapi.KEY_SPACE, "pause")
+        
     def get_observations(self):
         return self.obs_buf
-
+    
     def get_privileged_observations(self):
         return self.privileged_obs_buf
 
@@ -140,7 +162,7 @@ class BaseTaskHumanoidGym():
     def reset(self):
         """ Reset all robots"""
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        obs, privileged_obs, _, _, _ = self.step(torch.zeros(
+        obs, privileged_obs, *_, = self.step(torch.zeros(
             self.num_envs, self.num_actions, device=self.device, requires_grad=False))
         return obs, privileged_obs
 
@@ -155,10 +177,7 @@ class BaseTaskHumanoidGym():
 
             # check for keyboard events
             for evt in self.gym.query_viewer_action_events(self.viewer):
-                if evt.action == "QUIT" and evt.value > 0:
-                    sys.exit()
-                elif evt.action == "toggle_viewer_sync" and evt.value > 0:
-                    self.enable_viewer_sync = not self.enable_viewer_sync
+                self.handle_viewer_action_event(evt)
 
             # fetch results
             if self.device != 'cpu':
@@ -172,3 +191,18 @@ class BaseTaskHumanoidGym():
                     self.gym.sync_frame_time(self.sim)
             else:
                 self.gym.poll_viewer_events(self.viewer)
+
+    def handle_viewer_action_event(self, evt):
+        if evt.action == "QUIT" and evt.value > 0:
+            sys.exit()
+        elif evt.action == "toggle_viewer_sync" and evt.value > 0:
+            self.enable_viewer_sync = not self.enable_viewer_sync
+        
+        if evt.action == "pause" and evt.value > 0:
+            self.pause = True
+            while self.pause:
+                time.sleep(0.1)
+                self.gym.draw_viewer(self.viewer, self.sim, True)
+                for evt in self.gym.query_viewer_action_events(self.viewer):
+                    if evt.action == "pause" and evt.value > 0:
+                        self.pause = False

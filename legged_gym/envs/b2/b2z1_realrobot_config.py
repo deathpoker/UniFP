@@ -25,7 +25,7 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
             # init_pos_end = [0.66, np.pi/6, 0]
             init_pos_end = [0.66, 0, 0]
             pos_l = [0.4, 0.70]
-            pos_p = [-1 * np.pi / 12, 1 * np.pi / 3]
+            pos_p = [-1 * np.pi / 6, 1 * np.pi / 3]
             pos_y = [-2 * np.pi/ 4, 2 * np.pi /4]
 
             delta_orn_r = [-0.5, 0.5]
@@ -38,21 +38,21 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.6] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
-            'FL_hip_joint': 0.15,   # [rad]
+            'FL_hip_joint': 0.1,   # [rad]
             'FL_thigh_joint': 0.67,     # [rad]
-            'FL_calf_joint': -1.3,   # [rad]
+            'FL_calf_joint': -1.32,   # [rad]
 
-            'RL_hip_joint': 0.15,   # [rad]
+            'RL_hip_joint': 0.1,   # [rad]
             'RL_thigh_joint': 0.67,   # [rad]
-            'RL_calf_joint': -1.3,    # [rad]
+            'RL_calf_joint': -1.32,    # [rad]
 
-            'FR_hip_joint': -0.15,  # [rad]
+            'FR_hip_joint': -0.1,  # [rad]
             'FR_thigh_joint': 0.67,     # [rad]
-            'FR_calf_joint': -1.3,  # [rad]
+            'FR_calf_joint': -1.32,  # [rad]
 
-            'RR_hip_joint': -0.15,   # [rad]
+            'RR_hip_joint': -0.1,   # [rad]
             'RR_thigh_joint': 0.67,   # [rad]
-            'RR_calf_joint': -1.3,    # [rad]
+            'RR_calf_joint': -1.32,    # [rad]
 
             'z1_waist': 0.0,
             'z1_shoulder': 1.48,
@@ -71,12 +71,14 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
         randomize_friction = True
         friction_range = [0.3, 3.0] # [0.5, 3.0]
         randomize_base_mass = True
-        added_mass_range = [0., 15.]
+        added_mass_range = [0., 20.]
         randomize_base_com = True
         added_com_range_x = [-0.15, 0.15]
         added_com_range_y = [-0.15, 0.15]
         added_com_range_z = [-0.15, 0.15]
-        randomize_motor = False
+        randomize_leg_mass = False
+        leg_mass_scale_range = [-0.20, 0.20]
+        randomize_motor = True
         leg_motor_strength_range = [0.7, 1.3]
         arm_motor_strength_range = [0.7, 1.3]
         
@@ -93,7 +95,7 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
 
         push_robots = True
         push_interval_s = 8
-        max_push_vel_xy = 0.5
+        max_push_vel_xy = 1.0
 
     class env( LeggedRobotCfg.env ):
 
@@ -102,27 +104,27 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
         num_torques = 18
         frame_stack = 15
         c_frame_stack = 3
-        num_single_obs = 62
+        num_single_obs = 64
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 66
+        single_num_privileged_obs = 123
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
 
         observe_gait_commands = False
-        frequencies = 2.0
+        frequencies = 1.0
 
         action_delay = 3 # Not used, assigned in code
-        teleop_mode = False
+        teleop_mode = True
 
     class commands:
         curriculum = False
         max_curriculum = 1.
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
-        resampling_time = 10. # time before command are changed[s]
+        resampling_time = 5. # time before command are changed[s]
         heading_command = False # if true: compute ang vel command from heading error
         class ranges:
-            lin_vel_x = [-0.5, 0.5] # min max [m/s]
-            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
-            ang_vel_yaw = [-0.6, 0.6]    # min max [rad/s]
+            lin_vel_x = [-0.8, 0.8] # min max [m/s]
+            lin_vel_y = [-0.5, 0.5]   # min max [m/s]
+            ang_vel_yaw = [-0.8, 0.8]    # min max [rad/s]
             heading = [-3.14, 3.14]
         ang_vel_yaw_clip = 0.2
         ang_vel_pitch_clip = 0.5
@@ -180,12 +182,12 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
-        stiffness = {'hip': 600., 'thigh': 600, 'calf': 600, 'z1': 400}  # [N*m/rad]
-        damping = {'hip': 8.0, 'thigh': 8.0, 'calf': 8.0, 'z1': 40.0}     # [N*m*s/rad]
+        stiffness = {'hip': 300., 'thigh': 300, 'calf': 500, 'z1': 400}  # [N*m/rad]
+        damping = {'hip': 9.0, 'thigh': 9.0, 'calf': 15.0, 'z1': 40.0}     # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4
+        decimation = 20
     
     class arm:
         init_target_ee_base = [0.2, 0.0, 0.2]
@@ -213,30 +215,37 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
         base_height_target = 0.55
-        max_contact_force = 80. # forces above this value are penalized
+        max_contact_force = 400. # forces above this value are penalized
 
+        cycle_time = 0.8
+        target_joint_pos_scale = 0.17
+        target_joint_pos_thd = 0.5
         class scales: # ( ManipLocoCfg.rewards.scales ):
-
-            tracking_contacts_shaped_force = -2.0 # Only works when `observing_gait_commands` is true # 步态
-            tracking_contacts_shaped_vel = -2.0 # Only works when `observing_gait_commands` is true   # 步态
-            # tracking_contacts_shaped_pos = -0.1
-            tracking_lin_vel = 2.0 # 1.5  # track x轴方向速度
+            # reference motion tracking
+            feet_contact_number = 1.5
+            
+            tracking_lin_vel = 2. # 1.5  # track x轴方向速度
             # tracking_lin_vel_x_l1 = 0.
             # tracking_lin_vel_x_exp = 0
             tracking_ang_vel = 1.0 # just for yaw # track 旋转速度
-            # delta_torques = -1.0e-7/4.0 # 惩罚力量大小变化
+            delta_torques = -1.0e-6 # 惩罚力量大小变化
             # work = 0
             # energy = -1e-6
-            # energy_square = -1e-5
-            torques = -1.e-5 # -1e-5 # 惩罚力量大小
-            stand_still = 1.0 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
-            walking_dof = 1.0 # 和上面一样
+            energy_square = -5e-8
+            torques = -5.e-6 # -1e-5 # 惩罚力量大小
+            # stand_still = 1.0 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
+            # walking_dof = 1.0 # 和上面一样
+            # walking_ref_dof = 2.0
+            ref_dof_leg = 2.0
+            # walking_ref_swing_dof = 2.0
+            # walking_ref_stand_dof = 2.0
+            # joint_pos = 1.6
             # dof_default_pos = 0.0
             # dof_error = 0.0 # -0.06 # -0.04
             alive = 1.
-            lin_vel_z = -1.5 #b2沿着z轴的速度越小越好
+            lin_vel_z = -2.0 #b2沿着z轴的速度越小越好
             roll = -2.0 #惩罚b2侧身旋转
-            # pitch = -2.0
+            # pitch = -0.1
             
             # # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
 
@@ -245,13 +254,15 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
             feet_height = 1.5 # 奖励脚腾空高度
             # feet_hind_height = 1.0 # 奖励后腿脚腾空高度
             ang_vel_xy = -0.2 # -0.1 # 惩罚过快的转弯速度
-            dof_acc = -2.5e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
+            dof_acc = -5.0e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
+            dof_vel = -8.e-4
             collision = -5. # 惩罚大腿小腿躯干触地
-            action_rate = -0.015 # 惩罚action 变化速度
+            # action_smoothness = -0.02
+            action_rate = -0.02 # 惩罚action 变化速度
             dof_pos_limits = -10.0 #惩罚 超过限位角度
             hip_pos = -0.5  # 惩罚髋关节与default pos的差别
             # feet_jerk = -0.0002 # 惩罚关节力抽抽
-            # feet_drag = -0.08 # 惩罚脚拖地滑行
+            feet_drag = -0.0008 # 惩罚脚拖地滑行
             feet_contact_forces = -0.001 # 惩罚大于 max_contact_force的关节力量
             # orientation = 0.0
             # orientation_walking = 0.0
@@ -267,8 +278,8 @@ class B2Z1RealRobotRoughCfg( LeggedRobotCfg ):
             
             # symmetry
             feet_pos_xy = -0.5
-            # feet_height_symmetry = -0.05
-            feet_height_high = -10
+            feet_height_symmetry = -0.05
+            feet_height_high = -15
 
             # arm_scales:
             arm_termination = 0.

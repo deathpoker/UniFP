@@ -26,7 +26,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/base_link.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/base_link.dae" />
       </geometry>
       <material
         name="">
@@ -66,7 +66,7 @@
       <geometry>
         <cylinder length="0.16" radius="0.076" />
         <!-- <mesh
-          filename="./meshes/lidar_link.STL" /> -->
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/lidar_link.STL" /> -->
       </geometry>
     </collision>
   </link>
@@ -271,7 +271,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FL_hip.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FL_hip.dae" />
       </geometry>
       <material
         name="">
@@ -352,7 +352,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FL_thigh.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FL_thigh.dae" />
       </geometry>
       <material
         name="">
@@ -433,7 +433,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FL_calf.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FL_calf.dae" />
       </geometry>
       <material
         name="">
@@ -552,7 +552,7 @@
         xyz="-0.009305 0.010228 0.000264"
         rpy="0 0 0" />
       <mass
-        value="2.256" />
+        value="2.673" />
       <inertia
         ixx="0.0026431"
         ixy="-0.00019234"
@@ -567,7 +567,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FR_hip.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FR_hip.dae" />
       </geometry>
       <material
         name="">
@@ -648,7 +648,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FR_thigh.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FR_thigh.dae" />
       </geometry>
       <material
         name="">
@@ -727,7 +727,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/FR_calf.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/FR_calf.dae" />
       </geometry>
       <material
         name="">
@@ -847,7 +847,7 @@
         xyz="0.009305 -0.010228 0.000264"
         rpy="0 0 0" />
       <mass
-        value="2.256" />
+        value="2.673" />
       <inertia
         ixx="0.0026431"
         ixy="-0.00019234"
@@ -862,7 +862,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RL_hip.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RL_hip.dae" />
       </geometry>
       <material
         name="">
@@ -943,7 +943,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RL_thigh.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RL_thigh.dae" />
       </geometry>
       <material
         name="">
@@ -1022,7 +1022,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RL_calf.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RL_calf.dae" />
       </geometry>
       <material
         name="">
@@ -1156,7 +1156,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RR_hip.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RR_hip.dae" />
       </geometry>
       <material
         name="">
@@ -1237,7 +1237,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RR_thigh.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RR_thigh.dae" />
       </geometry>
       <material
         name="">
@@ -1316,7 +1316,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/RR_calf.dae" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/RR_calf.dae" />
       </geometry>
       <material
         name="">
@@ -1450,7 +1450,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/f_oc_link.STL" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/f_oc_link.STL" />
       </geometry>
       <material
         name="">
@@ -1464,7 +1464,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/f_oc_link.STL" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/f_oc_link.STL" />
       </geometry>
     </collision> -->
   </link>
@@ -1503,7 +1503,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/r_oc_link.STL" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/r_oc_link.STL" />
       </geometry>
       <material
         name="">
@@ -1517,7 +1517,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="./meshes/r_oc_link.STL" />
+          filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/meshes/r_oc_link.STL" />
       </geometry>
     </collision> -->
   </link>

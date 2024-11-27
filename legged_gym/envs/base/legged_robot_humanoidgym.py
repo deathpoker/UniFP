@@ -46,6 +46,7 @@ from legged_gym.utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqrt_fl
 from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config_humanoidgym import LeggedRobotHumanoidGymCfg
 
+import matplotlib.pyplot as plt
 
 def get_euler_xyz_tensor(quat):
     r, p, w = get_euler_xyz(quat)
@@ -80,6 +81,43 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
+
+        self.debug_curve = False
+        if self.debug_curve:
+            self.left_hip_pitch_joint = 0
+            self.left_knee_joint = 3
+            self.left_ankle_pitch_joint = 4
+            self.right_hip_pitch_joint = 6
+            self.right_knee_joint = 9
+            self.right_ankle_pitch_joint = 10
+            # 初始化绘图
+            plt.ion()  # 打开交互模式
+            fig, ((self.ax1, self.ax4), (self.ax2, self.ax5), (self.ax3, self.ax6)) = plt.subplots(3, 2)
+            self.t_data = []
+            self.left_hip_action, self.left_hip_state, self.left_hip_ref = [], [], []
+            self.left_knee_action, self.left_knee_state, self.left_knee_ref = [], [], []
+            self.left_ankle_action, self.left_ankle_state, self.left_ankle_ref = [], [], []
+            self.right_hip_action, self.right_hip_state, self.right_hip_ref = [], [], []
+            self.right_knee_action, self.right_knee_state, self.right_knee_ref = [], [], []
+            self.right_ankle_action, self.right_ankle_state, self.right_ankle_ref = [], [], []
+            self.left_hip_action_line, = self.ax1.plot([], [], 'b-', label="left_hip_action")       
+            self.left_hip_state_line, = self.ax1.plot([], [], 'r-', label="left_hip_state")
+            self.left_hip_ref_line, = self.ax1.plot([], [], 'y-', label="left_hip_ref")
+            self.left_knee_action_line, = self.ax2.plot([], [], 'b-', label="left_knee_action")
+            self.left_knee_state_line, = self.ax2.plot([], [], 'r-', label="left_knee_state")
+            self.left_knee_ref_line, = self.ax2.plot([], [], 'y-', label="left_knee_ref")
+            self.left_ankle_action_line, = self.ax3.plot([], [], 'b-', label="left_ankle_action")
+            self.left_ankle_state_line, = self.ax3.plot([], [], 'r-', label="left_ankle_state")
+            self.left_ankle_ref_line, = self.ax3.plot([], [], 'y-', label="left_ankle_ref")
+            self.right_hip_action_line, = self.ax4.plot([], [], 'b-', label="right_hip_action")       
+            self.right_hip_state_line, = self.ax4.plot([], [], 'r-', label="right_hip_state")
+            self.right_hip_ref_line, = self.ax4.plot([], [], 'y-', label="right_hip_ref")
+            self.right_knee_action_line, = self.ax5.plot([], [], 'b-', label="right_knee_action")
+            self.right_knee_state_line, = self.ax5.plot([], [], 'r-', label="right_knee_state")
+            self.right_knee_ref_line, = self.ax5.plot([], [], 'y-', label="right_knee_ref")
+            self.right_ankle_action_line, = self.ax6.plot([], [], 'b-', label="left_ankle_action")
+            self.right_ankle_state_line, = self.ax6.plot([], [], 'r-', label="left_ankle_state")
+            self.right_ankle_ref_line, = self.ax6.plot([], [], 'y-', label="left_ankle_ref")
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
@@ -149,15 +187,17 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_root_vel[:] = self.root_states[:, 7:13]
         self.last_rigid_state[:] = self.rigid_state[:]
+        self.last_torques[:] = self.torques[:]
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
+        self._draw_curve()
 
     def check_termination(self):
         """ Check if environments need to be reset
         """
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
-        self.reset_buf |= torch.logical_or(torch.abs(self.base_euler_xyz[:,1])>1.0, torch.abs(self.base_euler_xyz[:,0])>0.8)
+        self.reset_buf |= torch.logical_or(torch.abs(self.base_euler_xyz[:,1])>0.8, torch.abs(self.base_euler_xyz[:,0])>0.64)
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
 
@@ -188,6 +228,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self._resample_commands(env_ids)
 
         # reset buffers
+        self.last_torques[env_ids] = 0.
         self.last_last_actions[env_ids] = 0.
         self.actions[env_ids] = 0.
         self.last_actions[env_ids] = 0.
@@ -195,6 +236,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
+        self.gait_indices[env_ids] = 0
         self.reset_buf[env_ids] = 1
         # fill extras
         self.extras["episode"] = {}
@@ -241,6 +283,108 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         cam_pos = gymapi.Vec3(position[0], position[1], position[2])
         cam_target = gymapi.Vec3(lookat[0], lookat[1], lookat[2])
         self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+
+
+    def _draw_curve(self):
+        if self.debug_curve:
+
+            # 设置绘图范围
+            self.ax1.set_ylim(self.default_dof_pos[0, self.left_hip_pitch_joint].item()-1.5, self.default_dof_pos[0, self.left_hip_pitch_joint].item()+1.5)
+            self.ax1.set_title("left_hip_pitch")
+            self.ax1.set_xlabel("time / s")
+            self.ax1.legend(loc="upper right")
+            self.ax2.set_ylim(self.default_dof_pos[0, self.left_knee_joint].item()-1.5, self.default_dof_pos[0, self.left_knee_joint].item()+1.5)
+            self.ax2.set_title("left_knee")
+            self.ax2.set_xlabel("time / s")
+            self.ax2.legend(loc="upper right")
+            self.ax3.set_ylim(self.default_dof_pos[0, self.left_ankle_pitch_joint].item()-1.5, self.default_dof_pos[0, self.left_ankle_pitch_joint].item()+1.5)
+            self.ax3.set_title("left_ankle_pitch")
+            self.ax3.set_xlabel("time / s")
+            self.ax3.legend(loc="upper right")
+
+            self.ax4.set_ylim(self.default_dof_pos[0, self.right_hip_pitch_joint].item()-1.5, self.default_dof_pos[0, self.right_hip_pitch_joint].item()+1.5)
+            self.ax4.set_title("right_hip_pitch")
+            self.ax4.set_xlabel("time / s")
+            self.ax4.legend(loc="upper right")
+            self.ax5.set_ylim(self.default_dof_pos[0, self.right_knee_joint].item()-1.5, self.default_dof_pos[0, self.right_knee_joint].item()+1.5)
+            self.ax5.set_title("right_knee")
+            self.ax5.set_xlabel("time / s")
+            self.ax5.legend(loc="upper right")
+            self.ax6.set_ylim(self.default_dof_pos[0, self.right_ankle_pitch_joint].item()-1.5, self.default_dof_pos[0, self.right_ankle_pitch_joint].item()+1.5)
+            self.ax6.set_title("right_ankle_pitch")
+            self.ax6.set_xlabel("time / s")
+            self.ax6.legend(loc="upper right")
+
+            self.t_data.append(self.episode_length_buf.item())
+            self.left_hip_action.append(self.actions[0, self.left_hip_pitch_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.left_knee_joint].item())
+            self.left_hip_state.append(self.dof_pos[0, self.left_hip_pitch_joint].item())
+            self.left_hip_ref.append(self.ref_dof_pos[0, self.left_hip_pitch_joint].item())
+            self.left_knee_action.append(self.actions[0, self.left_knee_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.left_knee_joint].item())
+            self.left_knee_state.append(self.dof_pos[0, self.left_knee_joint].item())
+            self.left_knee_ref.append(self.ref_dof_pos[0, self.left_knee_joint].item())
+            self.left_ankle_action.append(self.actions[0, self.left_ankle_pitch_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.left_ankle_pitch_joint].item())
+            self.left_ankle_state.append(self.dof_pos[0, self.left_ankle_pitch_joint].item())
+            self.left_ankle_ref.append(self.ref_dof_pos[0, self.left_ankle_pitch_joint].item())
+
+            # stand_mask = self._get_gait_phase()
+            self.right_hip_action.append(self.actions[0, self.right_hip_pitch_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.right_knee_joint].item())
+            self.right_hip_state.append(self.dof_pos[0, self.right_hip_pitch_joint].item())
+            self.right_hip_ref.append(self.ref_dof_pos[0, self.right_hip_pitch_joint].item())
+            self.right_knee_action.append(self.actions[0, self.right_knee_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.right_knee_joint].item())
+            self.right_knee_state.append(self.dof_pos[0, self.right_knee_joint].item())
+            self.right_knee_ref.append(self.ref_dof_pos[0, self.right_knee_joint].item())
+            self.right_ankle_action.append(self.actions[0, self.right_ankle_pitch_joint].item() * self.cfg.control.action_scale + self.default_dof_pos[0, self.right_ankle_pitch_joint].item())
+            self.right_ankle_state.append(self.dof_pos[0, self.right_ankle_pitch_joint].item())
+            self.right_ankle_ref.append(self.ref_dof_pos[0, self.right_ankle_pitch_joint].item())
+            
+            if len(self.t_data) > 100:
+                self.t_data.pop(0)
+                self.left_hip_action.pop(0)
+                self.left_hip_state.pop(0)
+                self.left_hip_ref.pop(0)
+                self.left_knee_action.pop(0)
+                self.left_knee_state.pop(0)
+                self.left_knee_ref.pop(0)
+                self.left_ankle_action.pop(0)
+                self.left_ankle_state.pop(0)
+                self.left_ankle_ref.pop(0)
+                self.right_hip_action.pop(0)
+                self.right_hip_state.pop(0)
+                self.right_hip_ref.pop(0)
+                self.right_knee_action.pop(0)
+                self.right_knee_state.pop(0)
+                self.right_knee_ref.pop(0)
+                self.right_ankle_action.pop(0)
+                self.right_ankle_state.pop(0)
+                self.right_ankle_ref.pop(0)
+            # 更新绘图
+            self.left_hip_action_line.set_data(self.t_data, self.left_hip_action)
+            self.left_hip_state_line.set_data(self.t_data, self.left_hip_state)
+            self.left_hip_ref_line.set_data(self.t_data, self.left_hip_ref)
+            self.left_knee_action_line.set_data(self.t_data, self.left_knee_action)
+            self.left_knee_state_line.set_data(self.t_data, self.left_knee_state)
+            self.left_knee_ref_line.set_data(self.t_data, self.left_knee_ref)
+            self.left_ankle_action_line.set_data(self.t_data, self.left_ankle_action)
+            self.left_ankle_state_line.set_data(self.t_data, self.left_ankle_state)
+            self.left_ankle_ref_line.set_data(self.t_data, self.left_ankle_ref)
+
+            self.right_hip_action_line.set_data(self.t_data, self.right_hip_action)
+            self.right_hip_state_line.set_data(self.t_data, self.right_hip_state)
+            self.right_hip_ref_line.set_data(self.t_data, self.right_hip_ref)
+            self.right_knee_action_line.set_data(self.t_data, self.right_knee_action)
+            self.right_knee_state_line.set_data(self.t_data, self.right_knee_state)
+            self.right_knee_ref_line.set_data(self.t_data, self.right_knee_ref)
+            self.right_ankle_action_line.set_data(self.t_data, self.right_ankle_action)
+            self.right_ankle_state_line.set_data(self.t_data, self.right_ankle_state)
+            self.right_ankle_ref_line.set_data(self.t_data, self.right_ankle_ref)
+            self.ax1.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            self.ax2.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            self.ax3.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            self.ax4.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            self.ax5.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            self.ax6.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
+            plt.pause(0.001)
+            print(self.commands)
 
     #------------- Callbacks --------------
     def _process_rigid_shape_props(self, props, env_id):
@@ -298,9 +442,19 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         # randomize base mass
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
-            props[0].mass += np.random.uniform(rng[0], rng[1])
+            rand_mass = np.random.uniform(rng[0], rng[1], size=(1, ))
+            props[0].mass += rand_mass
+            
         self.body_mass[env_id] = props[0].mass
-        return props
+
+        if self.cfg.domain_rand.randomize_base_com:
+            rng_com = self.cfg.domain_rand.added_com_range
+            rand_com = np.random.uniform(rng_com[0], rng_com[1], size=(3, ))
+            props[0].com += gymapi.Vec3(*rand_com)
+        else:
+            rand_com = np.zeros(3)
+        mass_params = np.concatenate([rand_mass, rand_com])
+        return props, mass_params
     
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
@@ -309,6 +463,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         # 
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
         self._resample_commands(env_ids)
+        self._step_contact_targets()
         if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
@@ -320,12 +475,20 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
 
+    def _step_contact_targets(self):
+        cycle_time = self.cfg.rewards.cycle_time
+        standing_mask = ~self.get_walking_cmd_mask()
+        self.gait_indices = torch.remainder(self.gait_indices + self.dt / cycle_time, 1.0)
+        self.gait_indices[standing_mask] = 0
+
     def _resample_commands(self, env_ids):
         """ Randommly select commands of some environments
 
         Args:
             env_ids (List[int]): Environments ids for which new commands are needed
         """
+        if self.cfg.env.teleop_mode:
+            return
         self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         if self.cfg.commands.heading_command:
@@ -334,9 +497,8 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 
         # set small commands to zero
-        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
-
-
+        non_stop_sign = (torch.logical_or(torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip, torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip))
+        self.commands[env_ids, :] *= non_stop_sign.unsqueeze(1)
 
     def _compute_torques(self, actions):
         """ Compute torques from actions.
@@ -350,7 +512,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             [torch.Tensor]: Torques sent to the simulation
         """
         # pd controller
-        actions_scaled = actions * self.cfg.control.action_scale
+        actions_scaled = actions * self.motor_strength * self.cfg.control.action_scale
         p_gains = self.p_gains
         d_gains = self.d_gains
         torques = p_gains * (actions_scaled + self.default_dof_pos - self.dof_pos) - d_gains * self.dof_vel
@@ -410,7 +572,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             return
         distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
         # robots that walked far enough progress to harder terains
-        move_up = distance > self.terrain.env_length / 2
+        move_up = distance > self.terrain.env_length / 2.5
         # robots that walked less than half of their required distance go to simpler terrains
         move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*0.5) * ~move_up
         self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
@@ -472,6 +634,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.last_rigid_state = torch.zeros_like(self.rigid_state)
         self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.last_root_vel = torch.zeros_like(self.root_states[:, 7:13])
+        self.last_torques = torch.zeros_like(self.torques)
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
@@ -507,6 +670,11 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
 
         self.default_joint_pd_target = self.default_dof_pos.clone()
+
+        # gait
+        self.gait_indices = torch.zeros(self.num_envs, dtype=torch.float, device=self.device,
+                                        requires_grad=False)
+
         self.obs_history = deque(maxlen=self.cfg.env.frame_stack)
         self.critic_history = deque(maxlen=self.cfg.env.c_frame_stack)
         for _ in range(self.cfg.env.frame_stack):
@@ -613,6 +781,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         asset_options.armature = self.cfg.asset.armature
         asset_options.thickness = self.cfg.asset.thickness
         asset_options.disable_gravity = self.cfg.asset.disable_gravity
+        # asset_options.use_mesh_materials = True
 
         robot_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
         self.num_dof = self.gym.get_asset_dof_count(robot_asset)
@@ -627,6 +796,8 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.num_dofs = len(self.dof_names)
         feet_names = [s for s in body_names if self.cfg.asset.foot_name in s]
         knee_names = [s for s in body_names if self.cfg.asset.knee_name in s]
+        hip_roll_names = [s for s in body_names if self.cfg.asset.hip_roll_name in s]
+        hip_yaw_names = [s for s in body_names if self.cfg.asset.hip_yaw_name in s]
         penalized_contact_names = []
         for name in self.cfg.asset.penalize_contacts_on:
             penalized_contact_names.extend([s for s in body_names if name in s])
@@ -647,6 +818,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.env_frictions = torch.zeros(self.num_envs, 1, dtype=torch.float32, device=self.device)
 
         self.body_mass = torch.zeros(self.num_envs, 1, dtype=torch.float32, device=self.device, requires_grad=False)
+        self.mass_params_tensor = torch.zeros(self.num_envs, 4, dtype=torch.float, device=self.device, requires_grad=False)
         
         for i in range(self.num_envs):
             # create env instance
@@ -661,8 +833,11 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             dof_props = self._process_dof_props(dof_props_asset, i)
             self.gym.set_actor_dof_properties(env_handle, actor_handle, dof_props)
             body_props = self.gym.get_actor_rigid_body_properties(env_handle, actor_handle)
-            body_props = self._process_rigid_body_props(body_props, i)
+            body_props, mass_params = self._process_rigid_body_props(body_props, i)
             self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
+            
+            self.mass_params_tensor[i, :] = torch.from_numpy(mass_params).to(self.device)
+
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
 
@@ -672,6 +847,12 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], knee_names[i])
+        self.hip_roll_indices = torch.zeros(len(hip_roll_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(hip_roll_names)):
+            self.hip_roll_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], hip_roll_names[i])
+        self.hip_yaw_indices = torch.zeros(len(hip_yaw_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(hip_yaw_names)):
+            self.hip_yaw_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], hip_yaw_names[i])
 
         self.penalised_contact_indices = torch.zeros(len(penalized_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(penalized_contact_names)):
@@ -680,6 +861,11 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.termination_contact_indices = torch.zeros(len(termination_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
+
+        if self.cfg.domain_rand.randomize_motor:
+            self.motor_strength = torch_rand_float(self.cfg.domain_rand.leg_motor_strength_range[0], self.cfg.domain_rand.leg_motor_strength_range[1], (self.num_envs, 12), device=self.device)
+        else:
+            self.motor_strength = torch.ones(self.num_envs, self.num_actions, device=self.device)
 
     def _get_env_origins(self):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.

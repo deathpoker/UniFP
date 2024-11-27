@@ -31,6 +31,7 @@
 
 
 from .ppo import PPO
+from .ppo_lcp import PPOLCP
 from .on_policy_runner import OnPolicyRunner
 from .actor_critic import ActorCritic
 from .rollout_storage import RolloutStorage

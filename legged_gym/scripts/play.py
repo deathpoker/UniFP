@@ -15,13 +15,15 @@ import torch
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
     # override some parameters for testing
-    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 10)
+    env_cfg.env.num_envs = min(env_cfg.env.num_envs, 1)
     env_cfg.terrain.num_rows = 5
     env_cfg.terrain.num_cols = 5
     env_cfg.terrain.curriculum = False
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
+    env_cfg.domain_rand.randomize_base_mass = False
+    env_cfg.domain_rand.randomize_leg_mass = False
 
     env_cfg.env.test = True
 
@@ -46,17 +48,19 @@ def play(args):
     env.play = True
     for i in range(100*int(env.max_episode_length)):
         actions = policy(obs.detach())
+        # breakpoint()
         if FIX_COMMAND:
-            env.commands[:, 0] = 0.3    # 1.0
+            env.commands[:, 0] = 0.8    # 1.0
             env.commands[:, 1] = 0.0
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.
+            # env.gait_indices[:] = 0.
         obs, _, rews, dones, infos = env.step(actions.detach())
 
 if __name__ == '__main__':
     EXPORT_POLICY = True
     RECORD_FRAMES = False
     MOVE_CAMERA = False
-    FIX_COMMAND = True
+    FIX_COMMAND = False
     args = get_args()
     play(args)

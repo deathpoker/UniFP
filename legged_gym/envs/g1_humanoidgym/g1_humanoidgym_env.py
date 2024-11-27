@@ -98,22 +98,25 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
     def  _get_phase(self):
-        cycle_time = self.cfg.rewards.cycle_time
-        phase = self.episode_length_buf * self.dt / cycle_time
+        phase = self.gait_indices
         return phase
 
     def _get_gait_phase(self):
         # return float mask 1 is stance, 0 is swing
         phase = self._get_phase()
         sin_pos = torch.sin(2 * torch.pi * phase)
+
+        sin_pos_l = sin_pos.clone() + self.cfg.rewards.target_joint_pos_thd
+        sin_pos_r = sin_pos.clone() - self.cfg.rewards.target_joint_pos_thd
+        
         # Add double support phase
         stance_mask = torch.zeros((self.num_envs, 2), device=self.device)
         # left foot stance
-        stance_mask[:, 0] = sin_pos >= 0
+        stance_mask[:, 0] = sin_pos_l >= 0
         # right foot stance
-        stance_mask[:, 1] = sin_pos < 0
+        stance_mask[:, 1] = sin_pos_r < 0
         # Double support phase
-        stance_mask[torch.abs(sin_pos) < 0.1] = 1
+        # stance_mask[torch.abs(sin_pos) < 0.1] = 1
 
         return stance_mask
     
@@ -121,26 +124,25 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
     def compute_ref_state(self):
         phase = self._get_phase()
         sin_pos = torch.sin(2 * torch.pi * phase)
-        sin_pos_l = sin_pos.clone()
-        sin_pos_r = sin_pos.clone()
-        self.ref_dof_pos = torch.zeros_like(self.dof_pos)
-        scale_1 = self.cfg.rewards.target_joint_pos_scale
-        scale_2 = 2 * scale_1
+        sin_pos_l = sin_pos.clone() + self.cfg.rewards.target_joint_pos_thd
+        sin_pos_r = sin_pos.clone() - self.cfg.rewards.target_joint_pos_thd
+        repeat_default_pos = self.default_dof_pos.repeat(self.num_envs, 1)
+        # self.ref_dof_pos = torch.zeros_like(self.dof_pos)
+        self.ref_dof_pos = repeat_default_pos.clone()
+        scale_1 = self.cfg.rewards.target_joint_pos_scale / (1 - self.cfg.rewards.target_joint_pos_thd)
+        scale_2 = scale_1 * 2
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
-        self.ref_dof_pos[:, 2] = sin_pos_l * scale_1
-        self.ref_dof_pos[:, 3] = sin_pos_l * scale_2
-        self.ref_dof_pos[:, 4] = sin_pos_l * scale_1
+        self.ref_dof_pos[:, 0] += sin_pos_l * scale_1 # left_hip_pitch
+        self.ref_dof_pos[:, 3] -= sin_pos_l * scale_2 # left_knee
+        self.ref_dof_pos[:, 4] += sin_pos_l * scale_1 # left_ankle
         # right foot stance phase set to default joint pos
         sin_pos_r[sin_pos_r < 0] = 0
-        self.ref_dof_pos[:, 8] = sin_pos_r * scale_1
-        self.ref_dof_pos[:, 9] = sin_pos_r * scale_2
-        self.ref_dof_pos[:, 10] = sin_pos_r * scale_1
-        # Double support phase
-        self.ref_dof_pos[torch.abs(sin_pos) < 0.1] = 0
-
-        self.ref_action = 2 * self.ref_dof_pos
-
+        self.ref_dof_pos[:, 6] -= sin_pos_r * scale_1 # right_hip_pitch
+        self.ref_dof_pos[:, 9] += sin_pos_r * scale_2 # right_knee
+        self.ref_dof_pos[:, 10] -= sin_pos_r * scale_1 # right_ankle
+        # stand still phase
+        # self.ref_dof_pos[torch.abs(sin_pos) < 0.2] = repeat_default_pos[torch.abs(sin_pos) < 0.2]
 
     def create_sim(self):
         """ Creates simulation, terrain and evironments
@@ -189,6 +191,7 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
     def step(self, actions):
         if self.cfg.env.use_ref_actions:
             actions += self.ref_action
+        # actions = torch.zeros_like(actions, device=actions.device)
         actions = torch.clip(actions, -self.cfg.normalization.clip_actions, self.cfg.normalization.clip_actions)
         # dynamic randomization
         delay = torch.rand((self.num_envs, 1), device=self.device) * self.cfg.domain_rand.action_delay
@@ -229,7 +232,8 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
             self.rand_push_force[:, :2],  # 2
             self.rand_push_torque,  # 3
             self.env_frictions,  # 1
-            self.body_mass / 30.,  # 1
+            self.mass_params_tensor,  # 4
+            self.motor_strength[:, :12] - 1, # 12
             stance_mask,  # 2
             contact_mask,  # 2
         ), dim=-1)
@@ -268,6 +272,62 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         for i in range(self.critic_history.maxlen):
             self.critic_history[i][env_ids] *= 0
 
+    def get_walking_cmd_mask(self, env_ids=None, return_all=False):
+        if env_ids is None:
+            env_ids = torch.arange(self.num_envs, device=self.device)
+        walking_mask0 = torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip
+        walking_mask1 = torch.abs(self.commands[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip
+        walking_mask2 = torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip
+        walking_mask = walking_mask0 | walking_mask1 | walking_mask2
+
+        walking_mask = walking_mask | (self.gait_indices >= self.dt / self.cfg.rewards.cycle_time)
+
+        if return_all:
+            return walking_mask0, walking_mask1, walking_mask2, walking_mask
+        return walking_mask
+    
+    def subscribe_viewer_keyboard_events(self):
+        super().subscribe_viewer_keyboard_events()
+        if self.cfg.env.teleop_mode:
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_W, "forward")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_S, "reverse")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_Z, "left")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_C, "right")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_A, "turn_left")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_D, "turn_right")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_Q, "stop_x")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "stop_angular")
+            self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "stop_y")
+
+    
+    def handle_viewer_action_event(self, evt):
+        super().handle_viewer_action_event(evt)
+
+        if evt.value <= 0:
+            return
+        
+        if evt.action == "stop_x":
+            self.commands[:, 0] = 0
+        elif evt.action == "forward":
+            self.commands[:, 0] += 0.1
+        elif evt.action == "reverse":
+            self.commands[:, 0] -= 0.1
+        
+        elif evt.action == "stop_y":
+            self.commands[:, 1] = 0
+        elif evt.action == "left":
+            self.commands[:, 1] += 0.1
+        elif evt.action == "right":
+            self.commands[:, 1] -= 0.1
+
+        if evt.action == "stop_angular":
+            self.commands[:, 2] = 0
+        if evt.action == "turn_left":
+            self.commands[:, 2] += 0.1
+        elif evt.action == "turn_right":
+            self.commands[:, 2] -= 0.1
+        print(evt.action, self.commands)
+    
 # ================================================ Rewards ================================================== #
     def _reward_joint_pos(self):
         """
@@ -326,7 +386,7 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         first_contact = (self.feet_air_time > 0.) * contact_filt
         self.feet_air_time += self.dt
         rew_airTime = torch.sum((self.feet_air_time - 0.5) * first_contact, dim=1) # reward only on first contact with the ground
-        rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
+        rew_airTime *= self.get_walking_cmd_mask() #no reward for zero command
         self.feet_air_time *= ~contact_filt
         return rew_airTime
     
@@ -353,7 +413,7 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         """
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
         stance_mask = self._get_gait_phase()
-        reward = torch.where(contact == stance_mask, 1, -0.3)
+        reward = torch.where(contact == stance_mask, 1., -0.3)
         return torch.mean(reward, dim=1)
 
     def _reward_orientation(self):
@@ -465,6 +525,24 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
             self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error * self.cfg.rewards.tracking_sigma)
     
+    def _reward_feet_height(self):
+        feet_height = self.rigid_state[:, self.feet_indices, 2] # Only front feet
+        # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
+        rew = torch.clamp(feet_height - self.cfg.rewards.target_feet_height, max=0)
+        # Compute swing mask
+        swing_mask = 1 - self._get_gait_phase()
+        rew = torch.sum(rew * swing_mask, dim=1)
+        
+        return rew
+    
+    def _reward_feet_height_high(self):
+        feet_height = self.rigid_state[:, self.feet_indices, 2]
+        rew = torch.clamp(feet_height - self.cfg.rewards.target_feet_height -0.05, min=0)
+        # Compute swing mask
+        swing_mask = 1 - self._get_gait_phase()
+        rew = torch.sum(rew * swing_mask, dim=1)
+        return rew
+    
     def _reward_feet_clearance(self):
         """
         Calculates reward based on the clearance of the swing leg from the ground during movement.
@@ -528,6 +606,10 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         """
         return torch.sum(torch.square(self.torques), dim=1)
 
+    def _reward_delta_torques(self):
+        rew = torch.sum(torch.square(self.torques - self.last_torques), dim=1)
+        return rew
+    
     def _reward_dof_vel(self):
         """
         Penalizes high velocities at the degrees of freedom (DOF) of the robot. This encourages smoother and 
@@ -578,3 +660,77 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
             self.actions + self.last_last_actions - 2 * self.last_actions), dim=1)
         term_3 = 0.05 * torch.sum(torch.abs(self.actions), dim=1)
         return term_1 + term_2 + term_3
+    
+    def _reward_standing_dof_upper_body(self):
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, 12:], dim=1)
+        rew = torch.exp(-dof_error*0.05)
+        rew[self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+
+    def _reward_walking_dof_upper_body(self):
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, 12:], dim=1)
+        rew = torch.exp(-dof_error*0.05)
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+
+    def _reward_standing_dof_leg(self):
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.05)
+        rew[self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+
+    def _reward_walking_dof_leg(self):
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.05)
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+
+    def _reward_walking_ref_dof_leg(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.1)
+        rew[~self.get_walking_cmd_mask()] = 0.
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+
+    def _reward_ref_dof_leg(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, :12]
+        pos_target = self.ref_dof_pos.clone()
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
+        rew = torch.exp(-dof_error*0.1)
+        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+    
+    def _reward_hip_roll_pos(self):
+        rew = torch.sum(torch.square(self.dof_pos[:, self.hip_roll_indices] - self.default_dof_pos[:, self.hip_roll_indices]), dim=1)
+        return rew
+    
+    def _reward_hip_yaw_pos(self):
+        rew = torch.sum(torch.square(self.dof_pos[:, self.hip_yaw_indices] - self.default_dof_pos[:, self.hip_yaw_indices]), dim=1)
+        return rew
+    
+    def _reward_energy_square(self):
+        energy = torch.sum(torch.square(self.torques * self.dof_vel)[:, :12], dim=1)
+        return energy
+    
+    def _reward_alive(self):
+        return 1.

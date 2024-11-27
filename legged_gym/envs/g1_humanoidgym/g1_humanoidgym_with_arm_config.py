@@ -61,7 +61,7 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
         foot_name = "ankle_roll"
         knee_name = "knee"
 
-        terminate_after_contacts_on = ['head']
+        terminate_after_contacts_on = []
         penalize_contacts_on = ["hip", "knee", "torso"]
         self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
@@ -200,14 +200,16 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         num_commands = 4
         resampling_time = 10.  # time before command are changed[s]
-        heading_command = True  # if true: compute ang vel command from heading error
+        heading_command = False  # if true: compute ang vel command from heading error
 
         class ranges:
             lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_y = [-1.0, 1.0]   # min max [m/s]
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
             heading = [-3.14, 3.14]
-
+        lin_vel_x_clip = 0.1
+        lin_vel_y_clip = 0.1
+        ang_vel_yaw_clip = 0.1
     class rewards:
         base_height_target = 0.728
         min_dist = 0.2
@@ -234,7 +236,7 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
             # feet_distance = 0.2
             # knee_distance = 0.2
             # contact
-            # feet_contact_forces = -0.01
+            feet_contact_forces = -0.01
             # vel tracking
             tracking_lin_vel = 1.0
             tracking_ang_vel = 0.5
@@ -243,13 +245,17 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
             # track_vel_hard = 0.5
             # base pos
             # default_joint_pos = 0.5
+            walking_dof_upper_body = 2.0
+            standing_dof_upper_body = 2.0
+            standing_dof_leg = 0.5
+            walking_dof_leg = 0.5
             orientation = -1.
             # orientation_humanoidgym = 1.
             base_height = -10.0
             # base_height_humanoidgym = 0.2
             # base_acc = 0.2
             # energy
-            # action_smoothness = -0.002
+            action_smoothness = -0.002
             torques = -1e-5
             # dof_vel = -5e-4
             dof_acc = -2.5e-8
@@ -260,6 +266,7 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
             lin_vel_z = -2.0
             ang_vel_xy = -0.05
             dof_pos_limits = -5.0
+            alive = 1.0
 
     class normalization:
         class obs_scales:
@@ -297,7 +304,7 @@ class G1HumanoidGymWithArmCfgPPO(LeggedRobotHumanoidGymCfgPPO):
         max_iterations = 15001  # number of policy updates
 
         # logging
-        save_interval = 200  # Please check for potential savings every `save_interval` iterations.
+        save_interval = 50  # Please check for potential savings every `save_interval` iterations.
         experiment_name = 'g1_humanoidgym_with_arm'
         run_name = ''
         # Load and resume
