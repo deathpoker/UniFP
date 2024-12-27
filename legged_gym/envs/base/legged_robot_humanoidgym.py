@@ -84,12 +84,12 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
 
         self.debug_curve = False
         if self.debug_curve:
-            self.left_hip_pitch_joint = 0
-            self.left_knee_joint = 3
-            self.left_ankle_pitch_joint = 4
-            self.right_hip_pitch_joint = 6
-            self.right_knee_joint = 9
-            self.right_ankle_pitch_joint = 10
+            self.left_hip_pitch_joint = 17
+            self.left_knee_joint = 19
+            self.left_ankle_pitch_joint = 21
+            self.right_hip_pitch_joint = 22
+            self.right_knee_joint = 25
+            self.right_ankle_pitch_joint = 27
             # 初始化绘图
             plt.ion()  # 打开交互模式
             fig, ((self.ax1, self.ax4), (self.ax2, self.ax5), (self.ax3, self.ax6)) = plt.subplots(3, 2)
@@ -384,7 +384,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             self.ax5.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
             self.ax6.set_xlim(max(0, self.episode_length_buf.item() - 100), self.episode_length_buf.item() + 1)
             plt.pause(0.001)
-            print(self.commands)
+            # print(self.commands)
 
     #------------- Callbacks --------------
     def _process_rigid_shape_props(self, props, env_id):
@@ -566,20 +566,23 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         Args:
             env_ids (List[int]): ids of environments being reset
         """
-        # Implement Terrain curriculum
-        if not self.init_done:
-            # don't change on initial reset
-            return
-        distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
-        # robots that walked far enough progress to harder terains
-        move_up = distance > self.terrain.env_length / 2.5
-        # robots that walked less than half of their required distance go to simpler terrains
-        move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*0.5) * ~move_up
-        self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
-        # Robots that solve the last level are sent to a random one
+        if self.global_steps > 1000 * 24:
+            # Implement Terrain curriculum
+            if not self.init_done:
+                # don't change on initial reset
+                return
+            distance = torch.norm(self.root_states[env_ids, :2] - self.env_origins[env_ids, :2], dim=1)
+            # robots that walked far enough progress to harder terains
+            move_up = distance > self.terrain.env_length / 2.5
+            # robots that walked less than half of their required distance go to simpler terrains
+            move_down = (distance < torch.norm(self.commands[env_ids, :2], dim=1)*self.max_episode_length_s*0.5) * ~move_up
+            self.terrain_levels[env_ids] += 1 * move_up - 1 * move_down
+            # Robots that solve the last level are sent to a random one
+        else:
+            self.terrain_levels[env_ids] = 0
         self.terrain_levels[env_ids] = torch.where(self.terrain_levels[env_ids]>=self.max_terrain_level,
-                                                   torch.randint_like(self.terrain_levels[env_ids], self.max_terrain_level),
-                                                   torch.clip(self.terrain_levels[env_ids], 0)) # (the minumum level is zero)
+                                                torch.randint_like(self.terrain_levels[env_ids], self.max_terrain_level),
+                                                torch.clip(self.terrain_levels[env_ids], 0)) # (the minumum level is zero)
         self.env_origins[env_ids] = self.terrain_origins[self.terrain_levels[env_ids], self.terrain_types[env_ids]]
     
     def update_command_curriculum(self, env_ids):
@@ -683,6 +686,8 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         for _ in range(self.cfg.env.c_frame_stack):
             self.critic_history.append(torch.zeros(
                 self.num_envs, self.cfg.env.single_num_privileged_obs, dtype=torch.float, device=self.device))
+
+        self.global_steps = 0
 
     def _prepare_reward_function(self):
         """ Prepares a list of reward functions, which will be called to compute the total reward.
@@ -791,6 +796,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
 
         # save body names from the asset
         body_names = self.gym.get_asset_rigid_body_names(robot_asset)
+        self.body_names_to_idx = self.gym.get_asset_rigid_body_dict(robot_asset)
         self.dof_names = self.gym.get_asset_dof_names(robot_asset)
         self.num_bodies = len(body_names)
         self.num_dofs = len(self.dof_names)
@@ -798,6 +804,8 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         knee_names = [s for s in body_names if self.cfg.asset.knee_name in s]
         hip_roll_names = [s for s in body_names if self.cfg.asset.hip_roll_name in s]
         hip_yaw_names = [s for s in body_names if self.cfg.asset.hip_yaw_name in s]
+        waist_yaw_names = [s for s in body_names if self.cfg.asset.waist_yaw_name in s]
+        torso_name = [s for s in body_names if self.cfg.asset.torso_name in s]
         penalized_contact_names = []
         for name in self.cfg.asset.penalize_contacts_on:
             penalized_contact_names.extend([s for s in body_names if name in s])
@@ -853,6 +861,13 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
         self.hip_yaw_indices = torch.zeros(len(hip_yaw_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(hip_yaw_names)):
             self.hip_yaw_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], hip_yaw_names[i])
+        self.waist_yaw_indices = torch.zeros(len(waist_yaw_names), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(waist_yaw_names)):
+            self.waist_yaw_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], waist_yaw_names[i])
+        self.torso_indices = torch.zeros(len(torso_name), dtype=torch.long, device=self.device, requires_grad=False)
+        for i in range(len(torso_name)):
+            self.torso_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], torso_name[i])
+
 
         self.penalised_contact_indices = torch.zeros(len(penalized_contact_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(penalized_contact_names)):
@@ -863,7 +878,7 @@ class LeggedRobotHumanoidGym(BaseTaskHumanoidGym):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
         if self.cfg.domain_rand.randomize_motor:
-            self.motor_strength = torch_rand_float(self.cfg.domain_rand.leg_motor_strength_range[0], self.cfg.domain_rand.leg_motor_strength_range[1], (self.num_envs, 12), device=self.device)
+            self.motor_strength = torch_rand_float(self.cfg.domain_rand.leg_motor_strength_range[0], self.cfg.domain_rand.leg_motor_strength_range[1], (self.num_envs, self.num_actions), device=self.device)
         else:
             self.motor_strength = torch.ones(self.num_envs, self.num_actions, device=self.device)
 

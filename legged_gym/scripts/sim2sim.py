@@ -46,10 +46,10 @@ def get_obs(data):
     '''
     q = data.qpos.astype(np.double)
     dq = data.qvel.astype(np.double)
-    quat = data.sensor('imu_quat').data[[1, 2, 3, 0]].astype(np.double)
+    quat = data.qpos[3:7].astype(np.double)
     r = R.from_quat(quat)
     v = r.apply(data.qvel[:3], inverse=True).astype(np.double)  # In the base frame
-    omega = data.sensor('imu_gyro').data.astype(np.double)
+    omega = data.qvel[3:6].astype(np.double)
     gvec = r.apply(np.array([0., 0., -1.]), inverse=True).astype(np.double)
     return (q, dq, quat, v, omega, gvec)
 
@@ -135,6 +135,7 @@ def run_mujoco(policy, cfg):
                 policy_input[0, i * cfg.env.num_single_obs : (i + 1) * cfg.env.num_single_obs] = hist_obs[i][0, :]
             action[:] = policy(torch.tensor(policy_input))[0].detach().numpy()
             action = np.clip(action, -cfg.normalization.clip_actions, cfg.normalization.clip_actions)
+            action = np.zeros_like(action)
             target_q = action * cfg.control.action_scale + default_dof_pos
 
 
@@ -157,7 +158,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Deployment script.')
-    parser.add_argument('--load_model', default="/home/zhipy/project/unitree_rl_gym/logs/g1_humanoidgym_with_arm/exported/policies/policy_1.pt", type=str,
+    parser.add_argument('--load_model', default="/home/zhipy/project/unitree_rl_gym/logs/g1_with_arm/exported/policies/policy_1.pt", type=str,
                         help='Run to load from.')
     parser.add_argument('--terrain', default=True, action='store_true', help='terrain or plane')
     args = parser.parse_args()
@@ -165,16 +166,16 @@ if __name__ == '__main__':
     class Sim2simCfg(G1HumanoidGymWithArmCfg):
         class sim_config:
             if args.terrain:
-                mujoco_model_path = '/home/zhipy/project/unitree_rl_gym/unitree_mujoco/unitree_robots/g1/scene_29dof_with_hand_fixed.xml'
+                mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof_rev_1_0.xml'
             else:
-                mujoco_model_path = '/home/zhipy/project/unitree_rl_gym/unitree_mujoco/unitree_robots/g1/g1_29dof_with_hand.xml'
+                mujoco_model_path = f'{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof_rev_1_0.xml'
             sim_duration = 60.0
-            dt = 0.005
-            decimation = 4
+            dt = 0.001
+            decimation = 20
 
         class robot_config:
-            kps = np.array([150, 150, 150, 300, 40, 40, 150, 150, 150, 300, 40, 40, 300, 300, 300, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100], dtype=np.double)
-            kds = np.array([2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2, 4, 4, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=np.double)
+            kps = np.array([80, 80, 80, 160, 20, 20, 80, 80, 80, 160, 20, 20, 80, 80, 80, 20, 20, 20, 20, 20, 5, 5, 20, 20, 20, 20, 20, 5, 5], dtype=np.double)
+            kds = np.array([2, 2, 2, 4, 0.5, 0.5, 2, 2, 2, 4, 0.5, 0.5, 2, 2, 2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.125 ,0.125, 0.5, 0.5, 0.5, 0.5, 0.5, 0.125 ,0.125], dtype=np.double)
             tau_limit = 200. * np.ones(29, dtype=np.double)
 
     policy = torch.jit.load(args.load_model)

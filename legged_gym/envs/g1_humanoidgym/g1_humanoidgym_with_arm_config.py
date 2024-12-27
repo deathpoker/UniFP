@@ -41,37 +41,42 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
         c_frame_stack = 3
         num_single_obs = 98 # 47# 98
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 141 # 73 #141
+        single_num_privileged_obs = 173 # 73 #141
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
         num_actions = 29
         num_envs = 4096
         episode_length_s = 20     # episode length in seconds
         use_ref_actions = False   # speed up training by using reference actions
 
+        teleop_mode = True
     class safety:
         # safety factors
-        pos_limit = 1.0
-        vel_limit = 1.0
+        pos_limit = 0.9
+        vel_limit = 0.9
         torque_limit = 0.85
 
     class asset(LeggedRobotHumanoidGymCfg.asset):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof_with_hand_fixed.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/g1_description/g1_29dof_rev_1_0.urdf'
 
         name = "g1_with_arm"
         foot_name = "ankle_roll"
         knee_name = "knee"
+        hip_roll_name = "hip_roll"
+        hip_yaw_name = "hip_yaw"
+        waist_yaw_name = "waist_yaw"
+        torso_name = "torso"
 
-        terminate_after_contacts_on = []
-        penalize_contacts_on = ["hip", "knee", "torso"]
+        terminate_after_contacts_on = ['torso', 'pelvis']
+        penalize_contacts_on = ["hip", "knee"]
         self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
-        replace_cylinder_with_capsule = False
+        replace_cylinder_with_capsule = True
         fix_base_link = False
 
     class terrain(LeggedRobotHumanoidGymCfg.terrain):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
-        curriculum = True
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
+        curriculum = False
         # rough terrain only:
         measure_heights = False
         static_friction = 1.0
@@ -98,35 +103,35 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
             height_measurements = 0.1
 
     class init_state(LeggedRobotHumanoidGymCfg.init_state):
-        pos = [0.0, 0.0, 0.85] # x,y,z [m]
+        pos = [0.0, 0.0, 0.80] # x,y,z [m]
 
         default_joint_angles = { # = target angles [rad] when action = 0.0
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -0.1,         
-           'left_knee_joint' : 0.3,       
+           'left_hip_pitch_joint' : -0.2,         
+           'left_knee_joint' : 0.4,       
            'left_ankle_pitch_joint' : -0.2,     
            'left_ankle_roll_joint' : 0,     
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : -0.1,                                       
-           'right_knee_joint' : 0.3,                                             
+           'right_hip_pitch_joint' : -0.2,                                       
+           'right_knee_joint' : 0.4,                                             
            'right_ankle_pitch_joint': -0.2,                              
            'right_ankle_roll_joint' : 0,
            'waist_yaw_joint' : 0,
            'waist_roll_joint' : 0,
            'waist_pitch_joint' : 0,
-           'left_shoulder_pitch_joint' : 0,
-           'left_shoulder_roll_joint' : 0,
+           'left_shoulder_pitch_joint' : 0.4,
+           'left_shoulder_roll_joint' : 0.1,
            'left_shoulder_yaw_joint' : 0,
-           'left_elbow_joint' : 0,
+           'left_elbow_joint' : 0.3,
            'left_wrist_roll_joint' : 0,
            'left_wrist_pitch_joint' : 0,
            'left_wrist_yaw_joint' : 0,
-           'right_shoulder_pitch_joint' : 0,
-           'right_shoulder_roll_joint' : 0,
+           'right_shoulder_pitch_joint' : 0.4,
+           'right_shoulder_roll_joint' : -0.1,
            'right_shoulder_yaw_joint' : 0,
-           'right_elbow_joint' : 0,
+           'right_elbow_joint' : 0.3,
            'right_wrist_roll_joint' : 0,
            'right_wrist_pitch_joint' : 0,
            'right_wrist_yaw_joint' : 0,
@@ -134,38 +139,42 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
 
     class control(LeggedRobotHumanoidGymCfg.control):
         # PD Drive parameters:
-        stiffness = {'hip_yaw': 150,
-                     'hip_roll': 150,
-                     'hip_pitch': 150,
-                     'knee': 300,
-                     'ankle': 40,
-                     'waist_yaw': 300,
-                     'waist_roll': 300,
-                     'waist_pitch': 300,
-                     'shoulder': 100,
-                     'elbow': 100,
-                     'wrist': 100,
+        stiffness = {'hip_yaw': 80,
+                     'hip_roll': 80,
+                     'hip_pitch': 80,
+                     'knee': 160,
+                     'ankle': 20,
+                     'waist_yaw': 80,
+                     'waist_roll': 80,
+                     'waist_pitch': 80,
+                     'shoulder': 20,
+                     'elbow': 20,
+                     'wrist_roll': 20,
+                     'wrist_pitch': 5,
+                     'wrist_yaw': 5,
                      }  # [N*m/rad]
         damping = {  'hip_yaw': 2,
                      'hip_roll': 2,
                      'hip_pitch': 2,
                      'knee': 4,
-                     'ankle': 2,
-                     'waist_yaw': 4,
-                     'waist_roll': 4,
-                     'waist_pitch': 4,
-                     'shoulder': 2,
-                     'elbow': 2,
-                     'wrist': 2,
+                     'ankle': 0.5,
+                     'waist_yaw': 2,
+                     'waist_roll': 2,
+                     'waist_pitch': 2,
+                     'shoulder': 0.5,
+                     'elbow': 0.5,
+                     'wrist_roll': 0.5,
+                     'wrist_pitch': 0.125,
+                     'wrist_yaw': 0.125,
                      }  # [N*m/rad]  # [N*m*s/rad]
 
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4  # 50hz
+        decimation = 20  # 50hz
 
     class sim(LeggedRobotHumanoidGymCfg.sim):
-        dt = 0.005  # 200 Hz
+        dt = 0.001  # 200 Hz
         substeps = 1
         up_axis = 1  # 0 is y, 1 is z
 
@@ -185,16 +194,21 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
 
     class domain_rand:
         randomize_friction = True
-        friction_range = [0.1, 2.0]
+        friction_range = [0.6, 2.0]
         randomize_base_mass = True
-        added_mass_range = [-5., 5.]
+        added_mass_range = [-6., 6.]
+        randomize_base_com = True
+        added_com_range = [-0.06, 0.06]
         push_robots = True
         push_interval_s = 4
-        max_push_vel_xy = 0.2
+        max_push_vel_xy = 0.5
         max_push_ang_vel = 0.4
         # dynamic randomization
         action_delay = 0.5
         action_noise = 0.02
+        randomize_motor = True
+        leg_motor_strength_range = [0.8, 1.2]
+        arm_motor_strength_range = [0.8, 1.2]
 
     class commands(LeggedRobotHumanoidGymCfg.commands):
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
@@ -203,71 +217,96 @@ class G1HumanoidGymWithArmCfg(LeggedRobotHumanoidGymCfg):
         heading_command = False  # if true: compute ang vel command from heading error
 
         class ranges:
-            lin_vel_x = [-1.0, 1.0] # min max [m/s]
-            lin_vel_y = [-1.0, 1.0]   # min max [m/s]
-            ang_vel_yaw = [-1, 1]    # min max [rad/s]
+            lin_vel_x = [-0.8, 0.8] # min max [m/s]
+            lin_vel_y = [-0.5, 0.5]   # min max [m/s]
+            ang_vel_yaw = [-0.8, 0.8]    # min max [rad/s]
             heading = [-3.14, 3.14]
         lin_vel_x_clip = 0.1
         lin_vel_y_clip = 0.1
         ang_vel_yaw_clip = 0.1
     class rewards:
-        base_height_target = 0.728
+        base_height_target = 0.78
         min_dist = 0.2
         max_dist = 0.5
         # put some settings here for LLM parameter tuning
-        target_joint_pos_scale = 0.17    # rad
-        target_feet_height = 0.06        # m
-        cycle_time = 0.64                # sec
+        target_feet_height = 0.12        # m
+        cycle_time = 0.64               # sec
+        target_joint_pos_scale = 0.5    # rad
+        target_joint_pos_thd = 0.5
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = False
         # tracking reward = exp(error*sigma)
         tracking_sigma = 4
-        max_contact_force = 700  # Forces above this value are penalized
+        max_contact_force = 300  # Forces above this value are penalized
 
         class scales:
+
             # reference motion tracking
             # joint_pos = 1.6
             # feet_clearance = 1.
-            # feet_contact_number = 1.2
+            feet_height = 10
+            # feet_height_high = -50
+            feet_contact_number = 1.2
+            
             # gait
-            feet_air_time = 1.0
+            feet_air_time = 3.0
             # feet_air_time_humanoidgym = 1.
-            # foot_slip = -0.05
-            # feet_distance = 0.2
-            # knee_distance = 0.2
+            foot_slip = -0.1
+            feet_distance = 0.2
+            knee_distance = 0.2
+            hip_roll_pos = -0.5
+            hip_yaw_pos = -0.5
+            waist_yaw_pos = -0.5
             # contact
-            feet_contact_forces = -0.01
+            feet_contact_forces = -5e-4
+
             # vel tracking
-            tracking_lin_vel = 1.0
-            tracking_ang_vel = 0.5
+            tracking_lin_vel = 4.0
+            tracking_ang_vel = 3.
             # vel_mismatch_exp = 0.5  # lin_z; ang x,y
             # low_speed = 0.2
             # track_vel_hard = 0.5
+            
             # base pos
             # default_joint_pos = 0.5
-            walking_dof_upper_body = 2.0
-            standing_dof_upper_body = 2.0
-            standing_dof_leg = 0.5
-            walking_dof_leg = 0.5
-            orientation = -1.
+            # walking_dof_upper_body = 1.0
+            standing_dof_upper_body = 0.1
+            standing_dof_leg = 0.1
+            # walking_dof_leg = 0.2
+            walking_ref_dof_leg = 0.15
+            walking_ref_dof_upper_body = 0.5
+            # alive = 0.5
+            # ref_dof_leg = 0.2
+            orientation = -1.0
+            torso_orientation = -5.0
             # orientation_humanoidgym = 1.
             base_height = -10.0
             # base_height_humanoidgym = 0.2
             # base_acc = 0.2
+            
             # energy
             action_smoothness = -0.002
-            torques = -1e-5
-            # dof_vel = -5e-4
-            dof_acc = -2.5e-8
-            collision = -0.
-            action_rate = -0.01
+            action_rate_upper_body = -0.01
+            energy_square_leg = -5e-8
+            energy_square_upper_body = -3e-7
+            torques_leg = -2.5e-5
+            torques_upper_body = -2.5e-5
+            dof_vel_leg = -1e-4
+            dof_vel_upper_body = -2e-4
+            dof_acc_leg = -1.e-7
+            dof_acc_upper_body = -1.e-7
+            delta_torques_leg = -2.0e-6
+            delta_torques_upper_body = -2.0e-6
+            collision = -10.
+            # action_rate = -0.01
 
             # others
-            lin_vel_z = -2.0
-            ang_vel_xy = -0.05
-            dof_pos_limits = -5.0
-            alive = 1.0
+            lin_vel_z = -1.0
+            ang_vel_xy = -0.1
+            dof_pos_limits = -20.0
 
+            ang_penalty = -2.0
+            
     class normalization:
         class obs_scales:
             lin_vel = 2.
@@ -300,15 +339,17 @@ class G1HumanoidGymWithArmCfgPPO(LeggedRobotHumanoidGymCfgPPO):
     class runner:
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
-        num_steps_per_env = 60  # per iteration
+        num_steps_per_env = 24  # per iteration
         max_iterations = 15001  # number of policy updates
 
         # logging
         save_interval = 50  # Please check for potential savings every `save_interval` iterations.
-        experiment_name = 'g1_humanoidgym_with_arm'
+        experiment_name = 'g1_with_arm'
         run_name = ''
         # Load and resume
         resume = False
         load_run = -1  # -1 = last run
         checkpoint = -1  # -1 = last saved model
         resume_path = None  # updated from load_run and chkpt
+    # class algorithm(LeggedRobotHumanoidGymCfgPPO.algorithm):
+    #     grad_penalty_coef_schedule = [0.002, 0.002, 700, 1000]

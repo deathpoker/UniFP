@@ -131,16 +131,21 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         self.ref_dof_pos = repeat_default_pos.clone()
         scale_1 = self.cfg.rewards.target_joint_pos_scale / (1 - self.cfg.rewards.target_joint_pos_thd)
         scale_2 = scale_1 * 2
+        scale_3 = scale_1 * 0.2
         # left foot stance phase set to default joint pos
         sin_pos_l[sin_pos_l > 0] = 0
         self.ref_dof_pos[:, 0] += sin_pos_l * scale_1 # left_hip_pitch
         self.ref_dof_pos[:, 3] -= sin_pos_l * scale_2 # left_knee
         self.ref_dof_pos[:, 4] += sin_pos_l * scale_1 # left_ankle
+        # self.ref_dof_pos[:, 15] -= sin_pos * scale_3 # left shoulder
+        # self.ref_dof_pos[:, 18] -= sin_pos * scale_3 # left elbow
         # right foot stance phase set to default joint pos
         sin_pos_r[sin_pos_r < 0] = 0
         self.ref_dof_pos[:, 6] -= sin_pos_r * scale_1 # right_hip_pitch
         self.ref_dof_pos[:, 9] += sin_pos_r * scale_2 # right_knee
         self.ref_dof_pos[:, 10] -= sin_pos_r * scale_1 # right_ankle
+        # self.ref_dof_pos[:, 22] += sin_pos * scale_3 # right shoulder
+        # self.ref_dof_pos[:, 25] += sin_pos * scale_3 # right elbow
         # stand still phase
         # self.ref_dof_pos[torch.abs(sin_pos) < 0.2] = repeat_default_pos[torch.abs(sin_pos) < 0.2]
 
@@ -180,11 +185,11 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_vec[0: 5] = 0.  # commands
-        noise_vec[5: 17] = noise_scales.dof_pos * self.obs_scales.dof_pos
-        noise_vec[17: 29] = noise_scales.dof_vel * self.obs_scales.dof_vel
-        noise_vec[29: 41] = 0.  # previous actions
-        noise_vec[41: 44] = noise_scales.ang_vel * self.obs_scales.ang_vel   # ang vel
-        noise_vec[44: 47] = noise_scales.quat * self.obs_scales.quat         # euler x,y
+        noise_vec[5: 5+self.num_actions] = noise_scales.dof_pos * self.obs_scales.dof_pos
+        noise_vec[5+self.num_actions: 5+self.num_actions * 2] = noise_scales.dof_vel * self.obs_scales.dof_vel
+        noise_vec[5+self.num_actions * 2: 5+self.num_actions * 3] = 0.  # previous actions
+        noise_vec[5+self.num_actions * 3: 5+self.num_actions * 3 + 3] = noise_scales.ang_vel * self.obs_scales.ang_vel   # ang vel
+        noise_vec[5+self.num_actions * 3 + 3: 5+self.num_actions * 3 + 6] = noise_scales.quat * self.obs_scales.quat         # euler x,y
         return noise_vec
 
 
@@ -197,6 +202,7 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         delay = torch.rand((self.num_envs, 1), device=self.device) * self.cfg.domain_rand.action_delay
         actions = (1 - delay) * actions + delay * self.actions
         actions += self.cfg.domain_rand.action_noise * torch.randn_like(actions) * actions
+        self.global_steps += 1
         return super().step(actions)
 
 
@@ -233,7 +239,7 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
             self.rand_push_torque,  # 3
             self.env_frictions,  # 1
             self.mass_params_tensor,  # 4
-            self.motor_strength[:, :12] - 1, # 12
+            self.motor_strength[:, :] - 1, # 29
             stance_mask,  # 2
             contact_mask,  # 2
         ), dim=-1)
@@ -605,9 +611,31 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         the necessary force exerted by the motors.
         """
         return torch.sum(torch.square(self.torques), dim=1)
+    
+    def _reward_torques_leg(self):
+        """
+        Penalizes the use of high torques in the robot's joints. Encourages efficient movement by minimizing
+        the necessary force exerted by the motors.
+        """
+        return torch.sum(torch.square(self.torques)[:, :12], dim=1)
+    
+    def _reward_torques_upper_body(self):
+        """
+        Penalizes the use of high torques in the robot's joints. Encourages efficient movement by minimizing
+        the necessary force exerted by the motors.
+        """
+        return torch.sum(torch.square(self.torques)[:, 12:], dim=1)
 
     def _reward_delta_torques(self):
         rew = torch.sum(torch.square(self.torques - self.last_torques), dim=1)
+        return rew
+    
+    def _reward_delta_torques_leg(self):
+        rew = torch.sum(torch.square(self.torques - self.last_torques)[:, :12], dim=1)
+        return rew
+    
+    def _reward_delta_torques_upper_body(self):
+        rew = torch.sum(torch.square(self.torques - self.last_torques)[:, 12:], dim=1)
         return rew
     
     def _reward_dof_vel(self):
@@ -617,12 +645,40 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         """
         return torch.sum(torch.square(self.dof_vel), dim=1)
     
+    def _reward_dof_vel_leg(self):
+        """
+        Penalizes high velocities at the degrees of freedom (DOF) of the robot. This encourages smoother and 
+        more controlled movements.
+        """
+        return torch.sum(torch.square(self.dof_vel)[:, :12], dim=1)
+    
+    def _reward_dof_vel_upper_body(self):
+        """
+        Penalizes high velocities at the degrees of freedom (DOF) of the robot. This encourages smoother and 
+        more controlled movements.
+        """
+        return torch.sum(torch.square(self.dof_vel)[:, 12:], dim=1)
+    
     def _reward_dof_acc(self):
         """
         Penalizes high accelerations at the robot's degrees of freedom (DOF). This is important for ensuring
         smooth and stable motion, reducing wear on the robot's mechanical parts.
         """
         return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
+
+    def _reward_dof_acc_leg(self):
+        """
+        Penalizes high accelerations at the robot's degrees of freedom (DOF). This is important for ensuring
+        smooth and stable motion, reducing wear on the robot's mechanical parts.
+        """
+        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt)[:, :12], dim=1)
+
+    def _reward_dof_acc_upper_body(self):
+        """
+        Penalizes high accelerations at the robot's degrees of freedom (DOF). This is important for ensuring
+        smooth and stable motion, reducing wear on the robot's mechanical parts.
+        """
+        return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt)[:, 12:], dim=1)
 
     def _reward_dof_pos_limits(self):
         # Penalize dof positions too close to the limit
@@ -655,18 +711,33 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         This is important for achieving fluid motion and reducing mechanical stress.
         """
         term_1 = torch.sum(torch.square(
-            self.last_actions - self.actions), dim=1)
+            self.last_actions - self.actions)[:, :12], dim=1)
         term_2 = torch.sum(torch.square(
-            self.actions + self.last_last_actions - 2 * self.last_actions), dim=1)
-        term_3 = 0.05 * torch.sum(torch.abs(self.actions), dim=1)
+            self.actions + self.last_last_actions - 2 * self.last_actions)[:, :12], dim=1)
+        term_3 = 0.05 * torch.sum(torch.abs(self.actions)[:, :12], dim=1)
         return term_1 + term_2 + term_3
     
+    def _reward_action_smoothness_upper_body(self):
+        """
+        Encourages smoothness in the robot's actions by penalizing large differences between consecutive actions.
+        This is important for achieving fluid motion and reducing mechanical stress.
+        """
+        term_1 = torch.sum(torch.square(
+            self.last_actions - self.actions)[:, 12:], dim=1)
+        term_2 = torch.sum(torch.square(
+            self.actions + self.last_last_actions - 2 * self.last_actions)[:, 12:], dim=1)
+        term_3 = 0.05 * torch.sum(torch.abs(self.actions)[:, 12:], dim=1)
+        return term_1 + term_2 + term_3
+
+    def _reward_action_rate_upper_body(self):
+        # Penalize changes in actions
+        return torch.sum(torch.square(self.last_actions - self.actions)[:, 12:], dim=1)
+        
     def _reward_standing_dof_upper_body(self):
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, 12:], dim=1)
-        rew = torch.exp(-dof_error*0.05)
+        rew = torch.exp(-dof_error*1.0)
         rew[self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
 
     def _reward_walking_dof_upper_body(self):
@@ -674,15 +745,13 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, 12:], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
 
     def _reward_standing_dof_leg(self):
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
-        rew = torch.exp(-dof_error*0.05)
+        rew = torch.exp(-dof_error*0.5)
         rew[self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
 
     def _reward_walking_dof_leg(self):
@@ -690,7 +759,6 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
 
     def _reward_walking_ref_dof_leg(self):
@@ -699,12 +767,24 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         """
         self.compute_ref_state()
         joint_pos = self.dof_pos.clone()[:, :12]
-        pos_target = self.ref_dof_pos.clone()
+        pos_target = self.ref_dof_pos.clone()[:, :12]
         # Penalize motion at zero commands
-        dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target), dim=1)
         rew = torch.exp(-dof_error*0.1)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
+        return rew
+    
+    def _reward_walking_ref_dof_upper_body(self):
+        """
+        Calculates the reward based on the difference between the current joint positions and the target joint positions.
+        """
+        self.compute_ref_state()
+        joint_pos = self.dof_pos.clone()[:, 12:]
+        pos_target = self.ref_dof_pos.clone()[:, 12:]
+        # Penalize motion at zero commands
+        dof_error = torch.sum(torch.abs(joint_pos - pos_target), dim=1)
+        rew = torch.exp(-dof_error*0.8)
+        rew[~self.get_walking_cmd_mask()] = 0.
         return rew
 
     def _reward_ref_dof_leg(self):
@@ -717,7 +797,6 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.1)
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
     def _reward_hip_roll_pos(self):
@@ -728,9 +807,45 @@ class G1HumanoidGymEnv(LeggedRobotHumanoidGym):
         rew = torch.sum(torch.square(self.dof_pos[:, self.hip_yaw_indices] - self.default_dof_pos[:, self.hip_yaw_indices]), dim=1)
         return rew
     
-    def _reward_energy_square(self):
+    def _reward_waist_yaw_pos(self):
+        rew = torch.sum(torch.square(self.dof_pos[:, self.waist_yaw_indices] - self.default_dof_pos[:, self.waist_yaw_indices]), dim=1)
+        return rew
+
+    def _reward_torso_orientation(self):
+        # Penalize non flat base orientation
+        torso_quat = self.rigid_state[:, self.torso_indices[0], 3:7]
+        torso_projected_gravity = quat_rotate_inverse(torso_quat, self.gravity_vec)
+        return torch.sum(torch.square(torso_projected_gravity[:, :2]), dim=1)
+
+    def _reward_energy_square_leg(self):
         energy = torch.sum(torch.square(self.torques * self.dof_vel)[:, :12], dim=1)
         return energy
+    
+    def _reward_energy_square_upper_body(self):
+        energy = torch.sum(torch.square(self.torques * self.dof_vel)[:, 12:], dim=1)
+        return energy
+    
+    def _reward_ang_penalty(self):
+        """
+        Tracks angular velocity commands for yaw rotation.
+        Computes a reward based on how closely the robot's angular velocity matches the commanded yaw values.
+        """   
+        
+        ang_vel_error = torch.abs(
+            self.commands[:, 2] - self.base_ang_vel[:, 2])
+        # print(ang_vel_error)
+        penalty = torch.zeros_like(ang_vel_error).to(self.device)
+        penalty[ang_vel_error>0.4] += 0.25 
+        # penalty[ang_vel_error>0.3] = 0.5 
+
+        torso_quat = self.rigid_state[:, self.torso_indices[0], 3:7]
+        torso_projected_gravity = quat_rotate_inverse(torso_quat, self.gravity_vec)
+        torso_ang_vel = quat_rotate_inverse(torso_quat, self.rigid_state[:, self.torso_indices[0], 10:13])
+        
+        torso_ang_vel_error = torch.abs(
+            self.commands[:, 2] - torso_ang_vel[:, 2])
+        penalty[torso_ang_vel_error>0.4] += 0.25 
+        return penalty
     
     def _reward_alive(self):
         return 1.

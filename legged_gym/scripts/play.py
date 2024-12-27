@@ -50,7 +50,7 @@ def play(args):
         actions = policy(obs.detach())
         # breakpoint()
         if FIX_COMMAND:
-            env.commands[:, 0] = 0.8    # 1.0
+            env.commands[:, 0] = 0.0    # 1.0
             env.commands[:, 1] = 0.0
             env.commands[:, 2] = 0.
             env.commands[:, 3] = 0.
@@ -61,6 +61,6 @@ if __name__ == '__main__':
     EXPORT_POLICY = True
     RECORD_FRAMES = False
     MOVE_CAMERA = False
-    FIX_COMMAND = False
+    FIX_COMMAND = True
     args = get_args()
     play(args)

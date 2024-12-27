@@ -64,6 +64,8 @@ class G1HumanoidGymUpperFixedCfg(LeggedRobotHumanoidGymCfg):
         knee_name = "knee"
         hip_roll_name = "hip_roll"
         hip_yaw_name = "hip_yaw"
+        waist_yaw_name = "waist_yaw"
+        torso_name = "torso"
 
         terminate_after_contacts_on = ['torso', 'pelvis']
         penalize_contacts_on = ["hip", "knee"]
@@ -107,14 +109,14 @@ class G1HumanoidGymUpperFixedCfg(LeggedRobotHumanoidGymCfg):
         default_joint_angles = { # = target angles [rad] when action = 0.0
            'left_hip_yaw_joint' : 0. ,   
            'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -0.1,         
-           'left_knee_joint' : 0.3,       
+           'left_hip_pitch_joint' : -0.2,         
+           'left_knee_joint' : 0.4,       
            'left_ankle_pitch_joint' : -0.2,     
            'left_ankle_roll_joint' : 0,     
            'right_hip_yaw_joint' : 0., 
            'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : -0.1,                                       
-           'right_knee_joint' : 0.3,                                             
+           'right_hip_pitch_joint' : -0.2,                                       
+           'right_knee_joint' : 0.4,                                             
            'right_ankle_pitch_joint': -0.2,                              
            'right_ankle_roll_joint' : 0,       
            'torso_joint' : 0.
@@ -122,17 +124,17 @@ class G1HumanoidGymUpperFixedCfg(LeggedRobotHumanoidGymCfg):
 
     class control(LeggedRobotHumanoidGymCfg.control):
         # PD Drive parameters:
-        stiffness = {'hip_yaw': 150,
-                     'hip_roll': 150,
-                     'hip_pitch': 200,
-                     'knee': 200,
-                     'ankle': 40,
+        stiffness = {'hip_yaw': 80,
+                     'hip_roll': 80,
+                     'hip_pitch': 80,
+                     'knee': 160,
+                     'ankle': 20,
                      }  # [N*m/rad]
-        damping = {  'hip_yaw': 5,
-                     'hip_roll': 5,
-                     'hip_pitch': 5,
+        damping = {  'hip_yaw': 2.5,
+                     'hip_roll': 2.5,
+                     'hip_pitch': 2.5,
                      'knee': 5,
-                     'ankle': 4,
+                     'ankle': 2,
                      }  # [N*m/rad]  # [N*m*s/rad]
 
         # action scale: target angle = actionScale * action + defaultAngle
@@ -168,8 +170,8 @@ class G1HumanoidGymUpperFixedCfg(LeggedRobotHumanoidGymCfg):
         added_com_range = [-0.06, 0.06]
         push_robots = True
         push_interval_s = 4
-        max_push_vel_xy = 0.5
-        max_push_ang_vel = 0.4
+        max_push_vel_xy = 0.8
+        max_push_ang_vel = 0.6
         # dynamic randomization
         action_delay = 0.5
         action_noise = 0.02
@@ -252,7 +254,7 @@ class G1HumanoidGymUpperFixedCfg(LeggedRobotHumanoidGymCfg):
             # energy
             action_smoothness = -0.002
 
-            energy_square = -5e-8
+            energy_square_leg = -5e-8
             torques = -2.5e-5
             dof_vel = -1e-4
             dof_acc = -1.e-7

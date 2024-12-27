@@ -83,7 +83,7 @@ class LeggedRobotCfg(BaseConfig):
         replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
         flip_visual_attachments = True # Some .obj meshes must be flipped from y-up to z-up
         
-        density = 0.001
+        density = 0.005
         angular_damping = 0.
         linear_damping = 0.
         max_angular_velocity = 1000.
@@ -133,6 +133,14 @@ class LeggedRobotCfg(BaseConfig):
             dof_pos = 1.0
             dof_vel = 0.05
             height_measurements = 5.0
+            ee_sphe_radius_cmd = 0.5   # 0.2 - 0.7 
+            ee_sphe_pitch_cmd = 1.0    # -1.3 , 1.3 
+            ee_sphe_yaw_cmd = 1.3
+            end_effector_roll_cmd = 0.5
+            end_effector_pitch_cmd = 0.5
+            end_effector_yaw_cmd = 0.5
+            ee_force = 0.01
+            base_force = 0.01
         clip_observations = 100.
         clip_actions = 100.
 
@@ -154,7 +162,7 @@ class LeggedRobotCfg(BaseConfig):
         lookat = [11., 5, 3.]  # [m]
 
     class sim:
-        dt =  0.001
+        dt =  0.005
         substeps = 1
         gravity = [0., 0. ,-9.81]  # [m/s^2]
         up_axis = 1  # 0 is y, 1 is z
@@ -204,10 +212,10 @@ class LeggedRobotCfgPPO(BaseConfig):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 20000 # number of policy updates
+        max_iterations = 60000 # number of policy updates
 
         # logging
-        save_interval = 50 # check for potential saves every this many iterations
+        save_interval = 200 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume
