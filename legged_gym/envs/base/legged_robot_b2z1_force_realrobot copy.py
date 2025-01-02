@@ -1256,7 +1256,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         # print("force_push:",self.forces[:1, self.gripper_stator_index, :3])
         self.forces[self.freed_envs, self.gripper_stator_index, :3] = 0
         # self.forces[:, self.gripper_stator_index, :3] = 0
-        if self.global_steps < 8000 * 24 and not self.play:
+        if self.global_steps < 8000 * 24 :
             self.forces[:, self.gripper_stator_index, :3] = 0
             self.current_Fxyz_cmd[:, :] = 0
             self.ee_goal_force_offset = self.curr_ee_goal_cart_world

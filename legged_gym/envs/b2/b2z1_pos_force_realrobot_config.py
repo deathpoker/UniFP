@@ -174,7 +174,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
 
         settling_time_force_base_s = 5.0
 
-        force_start_step = 0
+        force_start_step = 10000
     class terrain:
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         hf2mesh_method = "fast"  # grid or fast
@@ -238,7 +238,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
         grasp_offset = 0.08
 
     class asset( LeggedRobotCfg.asset ):
-        file = '/home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/b2z1_new.urdf'
+        file = '/home/peiyang/project/unitree/b2z1/WBC/resources/robots/b2z1/b2z1_new.urdf'
         name = "b2z1"
         foot_name = "foot"
         thigh_name = "thigh"
@@ -314,7 +314,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             collision = -5. # 惩罚大腿小腿躯干触地
             # action_smoothness = -0.02
             action_rate = -0.015 # 惩罚action 变化速度
-            action_rate_arm = -0.015 # 惩罚action 变化速度
+            action_rate_arm = -0.045 # 惩罚action 变化速度
             dof_pos_limits = -10.0 #惩罚 超过限位角度
             torque_limits = -0.005
             hip_pos = -0.5  # 惩罚髋关节与default pos的差别
@@ -324,7 +324,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # orientation = 0.0
             # orientation_walking = 0.0
             # orientation_standing = 0.0
-            base_height = -0.5 #惩罚不是  
+            base_height = -0.4 #惩罚不是  
             # torques_walking = 0.0
             # torques_standing = 0.0
             # energy_square_walking = 0.0
