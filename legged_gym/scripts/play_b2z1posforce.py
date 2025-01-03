@@ -58,6 +58,12 @@ def play(args):
         traced_script_module.save(adaptation_module_path)
         print('Exported policy as jit script to: ', adaptation_module_path)
 
+        adaptation_decoder_path = os.path.join(path, 'adaptation_decoder.pt')
+        model = copy.deepcopy(ppo_runner.alg.actor_critic.adaptation_decoder_module).to('cpu')
+        traced_script_module = torch.jit.script(model)
+        traced_script_module.save(adaptation_decoder_path)
+        print('Exported policy as jit script to: ', adaptation_decoder_path)
+
         actor_body_path = os.path.join(path, 'actor_body.pt')
         model = copy.deepcopy(ppo_runner.alg.actor_critic.actor_body).to('cpu')
         traced_script_module = torch.jit.script(model)
