@@ -67,6 +67,7 @@ class OnPolicyRunner:
         actor_critic: ActorCritic = actor_critic_class( self.env.num_obs,
                                                         self.env.num_privileged_obs,
                                                         self.env.num_pred_obs,
+                                                        self.env.num_single_obs,
                                                         self.env.num_actions,
                                                         **self.policy_cfg).to(self.device)
         alg_class = eval(self.cfg["algorithm_class_name"]) # PPO
@@ -119,7 +120,7 @@ class OnPolicyRunner:
                 for i in range(self.num_steps_per_env):
                     actions = self.alg.act(obs, privileged_obs, obs_pred)
                     with torch.no_grad():
-                        latent = self.alg.actor_critic.adaptation_module(obs)
+                        latent = self.alg.actor_critic.get_student_latent(obs)
                     obs_dict, rewards, dones, infos = self.env.step(actions)
                     obs, privileged_obs, obs_pred = obs_dict["obs"], obs_dict["privileged_obs"], obs_dict[
                         "obs_pred"]

@@ -10,7 +10,7 @@ from legged_gym.b2_gym_learn.ppo_cse_pf.rollout_storage import RolloutStorage
 
 
 class Adaptation_Args():
-    adaptation_module_learning_rate = 1.e-3
+    adaptation_module_learning_rate = 1.e-5
     num_adaptation_module_substeps = 1
     adaptation_batch_size = 64
 

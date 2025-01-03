@@ -1,6 +1,6 @@
 <robot name="g1_29dof_rev_1_0">
   <mujoco>
-    <compiler meshdir="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes" discardvisual="false"/>
+    <compiler meshdir="meshes" discardvisual="false"/>
   </mujoco>
 
   <!-- [CAUTION] uncomment when convert to mujoco -->
@@ -19,7 +19,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/pelvis.STL"/>
+        <mesh filename="meshes/pelvis.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -35,7 +35,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/pelvis_contour_link.STL"/>
+        <mesh filename="meshes/pelvis_contour_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -44,7 +44,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/pelvis_contour_link.STL"/>
+        <mesh filename="meshes/pelvis_contour_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -63,7 +63,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_pitch_link.STL"/>
+        <mesh filename="meshes/left_hip_pitch_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -72,7 +72,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_pitch_link.STL"/>
+        <mesh filename="meshes/left_hip_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -92,7 +92,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_roll_link.STL"/>
+        <mesh filename="meshes/left_hip_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -101,7 +101,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_roll_link.STL"/>
+        <mesh filename="meshes/left_hip_roll_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -121,7 +121,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_yaw_link.STL"/>
+        <mesh filename="meshes/left_hip_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -130,7 +130,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_hip_yaw_link.STL"/>
+        <mesh filename="meshes/left_hip_yaw_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -157,7 +157,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_knee_link.STL"/>
+        <mesh filename="meshes/left_knee_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -166,7 +166,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_knee_link.STL"/>
+        <mesh filename="meshes/left_knee_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -193,7 +193,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_ankle_pitch_link.STL"/>
+        <mesh filename="meshes/left_ankle_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -202,7 +202,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_ankle_pitch_link.STL"/>
+        <mesh filename="meshes/left_ankle_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -222,7 +222,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_ankle_roll_link.STL"/>
+        <mesh filename="meshes/left_ankle_roll_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -281,7 +281,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_pitch_link.STL"/>
+        <mesh filename="meshes/right_hip_pitch_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -290,7 +290,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_pitch_link.STL"/>
+        <mesh filename="meshes/right_hip_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -310,7 +310,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_roll_link.STL"/>
+        <mesh filename="meshes/right_hip_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -319,7 +319,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_roll_link.STL"/>
+        <mesh filename="meshes/right_hip_roll_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -339,7 +339,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_yaw_link.STL"/>
+        <mesh filename="meshes/right_hip_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -348,7 +348,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_hip_yaw_link.STL"/>
+        <mesh filename="meshes/right_hip_yaw_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -375,7 +375,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_knee_link.STL"/>
+        <mesh filename="meshes/right_knee_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -384,7 +384,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_knee_link.STL"/>
+        <mesh filename="meshes/right_knee_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -411,7 +411,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_ankle_pitch_link.STL"/>
+        <mesh filename="meshes/right_ankle_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -420,7 +420,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_ankle_pitch_link.STL"/>
+        <mesh filename="meshes/right_ankle_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -440,7 +440,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_ankle_roll_link.STL"/>
+        <mesh filename="meshes/right_ankle_roll_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -501,7 +501,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/waist_yaw_link_rev_1_0.STL"/>
+        <mesh filename="meshes/waist_yaw_link_rev_1_0.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -524,7 +524,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/waist_roll_link_rev_1_0.STL"/>
+        <mesh filename="meshes/waist_roll_link_rev_1_0.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -547,7 +547,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/torso_link_rev_1_0.STL"/>
+        <mesh filename="meshes/torso_link_rev_1_0.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -556,7 +556,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/torso_link_rev_1_0.STL"/>
+        <mesh filename="meshes/torso_link_rev_1_0.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -592,7 +592,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/logo_link.STL"/>
+        <mesh filename="meshes/logo_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -601,7 +601,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/logo_link.STL"/>
+        <mesh filename="meshes/logo_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -616,7 +616,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/head_link.STL"/>
+        <mesh filename="meshes/head_link.STL"/>
       </geometry>
       <material name="dark">
         <color rgba="0.2 0.2 0.2 1"/>
@@ -625,7 +625,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/head_link.STL"/>
+        <mesh filename="meshes/head_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -677,7 +677,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_shoulder_pitch_link.STL"/>
+        <mesh filename="meshes/left_shoulder_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -706,7 +706,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_shoulder_roll_link.STL"/>
+        <mesh filename="meshes/left_shoulder_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -735,7 +735,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_shoulder_yaw_link.STL"/>
+        <mesh filename="meshes/left_shoulder_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -744,7 +744,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_shoulder_yaw_link.STL"/>
+        <mesh filename="meshes/left_shoulder_yaw_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -771,7 +771,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_elbow_link.STL"/>
+        <mesh filename="meshes/left_elbow_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -780,7 +780,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_elbow_link.STL"/>
+        <mesh filename="meshes/left_elbow_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -814,7 +814,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_roll_link.STL"/>
+        <mesh filename="meshes/left_wrist_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -823,7 +823,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_roll_link.STL"/>
+        <mesh filename="meshes/left_wrist_roll_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -843,7 +843,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_pitch_link.STL"/>
+        <mesh filename="meshes/left_wrist_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -859,7 +859,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_pitch_link.STL"/>
+        <mesh filename="meshes/left_wrist_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -879,7 +879,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_yaw_link.STL"/>
+        <mesh filename="meshes/left_wrist_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -888,7 +888,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_wrist_yaw_link.STL"/>
+        <mesh filename="meshes/left_wrist_yaw_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -906,7 +906,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/left_rubber_hand.STL"/>
+        <mesh filename="meshes/left_rubber_hand.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -922,7 +922,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_shoulder_pitch_link.STL"/>
+        <mesh filename="meshes/right_shoulder_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -951,7 +951,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_shoulder_roll_link.STL"/>
+        <mesh filename="meshes/right_shoulder_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -980,7 +980,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_shoulder_yaw_link.STL"/>
+        <mesh filename="meshes/right_shoulder_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -989,7 +989,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_shoulder_yaw_link.STL"/>
+        <mesh filename="meshes/right_shoulder_yaw_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -1016,7 +1016,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_elbow_link.STL"/>
+        <mesh filename="meshes/right_elbow_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -1025,7 +1025,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_elbow_link.STL"/>
+        <mesh filename="meshes/right_elbow_link.STL"/>
       </geometry>
     </collision> -->
     <collision>
@@ -1059,7 +1059,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_roll_link.STL"/>
+        <mesh filename="meshes/right_wrist_roll_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -1068,7 +1068,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_roll_link.STL"/>
+        <mesh filename="meshes/right_wrist_roll_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -1088,7 +1088,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_pitch_link.STL"/>
+        <mesh filename="meshes/right_wrist_pitch_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -1104,7 +1104,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_pitch_link.STL"/>
+        <mesh filename="meshes/right_wrist_pitch_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -1124,7 +1124,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_yaw_link.STL"/>
+        <mesh filename="meshes/right_wrist_yaw_link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
@@ -1133,7 +1133,7 @@
     <!-- <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_wrist_yaw_link.STL"/>
+        <mesh filename="meshes/right_wrist_yaw_link.STL"/>
       </geometry>
     </collision> -->
   </link>
@@ -1151,7 +1151,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="file:///home/zhipy/project/unitree_rl_gym/resources/robots/g1_description/meshes/right_rubber_hand.STL"/>
+        <mesh filename="meshes/right_rubber_hand.STL"/>
       </geometry>
       <material name="white">
         <color rgba="0.7 0.7 0.7 1"/>
