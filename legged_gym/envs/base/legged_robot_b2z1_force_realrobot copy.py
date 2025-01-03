@@ -993,7 +993,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
             init_env_ids = env_ids.clone()
             
             if is_init:
-                if self.global_steps < 2000 * 24 and not self.play:
+                if self.global_steps < 0 * 24 and not self.play:
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]
@@ -1002,7 +1002,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
             else:
-                if self.global_steps < 2000 * 24 and not self.play:
+                if self.global_steps < 0 * 24 and not self.play:
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]
@@ -1256,7 +1256,7 @@ class LeggedRobot_b2z1_realrobot(BaseTask):
         # print("force_push:",self.forces[:1, self.gripper_stator_index, :3])
         self.forces[self.freed_envs, self.gripper_stator_index, :3] = 0
         # self.forces[:, self.gripper_stator_index, :3] = 0
-        if self.global_steps < 8000 * 24 :
+        if self.global_steps < 0 * 24 :
             self.forces[:, self.gripper_stator_index, :3] = 0
             self.current_Fxyz_cmd[:, :] = 0
             self.ee_goal_force_offset = self.curr_ee_goal_cart_world

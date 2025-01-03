@@ -263,7 +263,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
 
         cycle_time = 0.64
         target_joint_pos_scale = 0.17
-        target_joint_pos_thd = 0.5
+        target_joint_pos_thd = 0.7
 
         sigma_force = 1/50
         
@@ -283,7 +283,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # work = 0
             # energy = -1e-6
             energy_square = -1e-7
-            energy_square_stand = -1e-6
+            energy_square_stand = -1e-7
             energy_square_arm = -5e-7
             torques = -3.e-6 # -1e-5 # 惩罚力量大小
             stand_still = 0.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
@@ -303,8 +303,8 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
 
             # # common rewards
-            feet_air_time = 1.0 # 奖励脚腾空时间
-            feet_height = 1.0 # 奖励脚腾空高度
+            feet_air_time = 0 # 奖励脚腾空时间 1.0
+            feet_height = 1.2 # 奖励脚腾空高度
             # feet_hind_height = 1.0 # 奖励后腿脚腾空高度
             ang_vel_xy = -0.05 # -0.1 # 惩罚过快的转弯速度
             dof_acc = -5.0e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
@@ -324,7 +324,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # orientation = 0.0
             # orientation_walking = 0.0
             # orientation_standing = 0.0
-            base_height = -0.4 #惩罚不是  
+            base_height = -0.5 #惩罚不是  
             # torques_walking = 0.0
             # torques_standing = 0.0
             # energy_square_walking = 0.0
