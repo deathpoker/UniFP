@@ -89,6 +89,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self._parse_cfg(self.cfg)
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
         self.num_pred_obs = self.cfg.env.num_pred_obs
+        self.num_single_obs = self.cfg.env.num_single_obs
         self.obs_pred = torch.zeros(self.num_envs, self.num_pred_obs, device=self.device, dtype=torch.float)
 
         if not self.headless:
@@ -912,12 +913,14 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         
-        zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
+        if self.global_steps < self.cfg.commands.force_start_step * 24:
+            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
+        else:
+            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob_after_force
         self.commands[env_ids, :3] *= ~zero_cmd_mask.unsqueeze(1)
 
-
         # set small commands to zero
-        non_stop_sign = (torch.logical_or(torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip, torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip))
+        non_stop_sign = (torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip) | (torch.abs(self.commands[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip) | (torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip)
         self.commands[env_ids, :3] *= non_stop_sign.unsqueeze(1)
 
     def control_ik(self, dpose):
@@ -2138,6 +2141,9 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         base_lin_vel_offset = (forces_offset / self.base_force_kds)[:, :2] + self.commands[:, :2]
 
 
+        non_stop_sign = (torch.abs(base_lin_vel_offset[:, 0]) > self.cfg.commands.lin_vel_x_clip) | (torch.abs(base_lin_vel_offset[:, 1]) > self.cfg.commands.lin_vel_y_clip) | (torch.abs(self.commands[:, 2]) > self.cfg.commands.ang_vel_yaw_clip)
+        base_lin_vel_offset[:, :3] *= non_stop_sign.unsqueeze(1)
+
         lin_vel_error = torch.sum(torch.square(base_lin_vel_offset - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
@@ -2188,7 +2194,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
     def _reward_feet_height(self):
         feet_height = self.rigid_state[:, self.feet_indices[:2], 2] # Only front feet
         # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
-        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.07, max=0)
+        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.10, max=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
         return rew
@@ -2198,6 +2204,13 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.18, min=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
+        return rew
+    
+    def _reward_feet_height_high_standing(self):
+        feet_height = self.rigid_state[:, self.feet_indices, 2]
+        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.05, min=0)
+        cmd_walk_flag = self.get_walking_cmd_mask()
+        rew[cmd_walk_flag] = 0
         return rew
 
     def _reward_feet_hind_height(self):
@@ -2377,8 +2390,36 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         """
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
         stance_mask = self._get_gait_phase()
-        reward = torch.where(contact == stance_mask, 1, -1.2)
+        reward = torch.where(contact == stance_mask, 1, -0.3)
         return torch.mean(reward, dim=1)
+    
+    def _reward_feet_contact_number_walking(self):
+        """
+        Calculates a reward based on the number of feet contacts aligning with the gait phase. 
+        Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
+        """
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        stance_mask = self._get_gait_phase()
+        reward = torch.where(contact == stance_mask, 1, -0.3)
+        reward = torch.mean(reward, dim=1)
+
+        cmd_stop_flag = ~self.get_walking_cmd_mask()
+        reward[cmd_stop_flag] = 0
+        return reward
+    
+    def _reward_feet_contact_number_standing(self):
+        """
+        Calculates a reward based on the number of feet contacts aligning with the gait phase. 
+        Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
+        """
+        contact = self.contact_forces[:, self.feet_indices, 2] > 5.
+        stance_mask = self._get_gait_phase()
+        reward = torch.where(contact == stance_mask, 0, -1.)
+        reward = torch.mean(reward, dim=1)
+        cmd_walking_flag = self.get_walking_cmd_mask()
+        
+        reward[cmd_walking_flag] = 0
+        return reward
     
     def _reward_ee_force_x(self):
         

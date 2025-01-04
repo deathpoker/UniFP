@@ -53,10 +53,16 @@ def play(args):
         path = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
         os.makedirs(path, exist_ok=True)
         adaptation_module_path = os.path.join(path, 'adaptation_module.pt')
-        model = copy.deepcopy(ppo_runner.alg.actor_critic.adaptation_module).to('cpu')
+        model = copy.deepcopy(ppo_runner.alg.actor_critic.adaptation_encoder_module).to('cpu')
         traced_script_module = torch.jit.script(model)
         traced_script_module.save(adaptation_module_path)
         print('Exported policy as jit script to: ', adaptation_module_path)
+
+        adaptation_decoder_path = os.path.join(path, 'adaptation_decoder.pt')
+        model = copy.deepcopy(ppo_runner.alg.actor_critic.adaptation_decoder_module).to('cpu')
+        traced_script_module = torch.jit.script(model)
+        traced_script_module.save(adaptation_decoder_path)
+        print('Exported policy as jit script to: ', adaptation_decoder_path)
 
         actor_body_path = os.path.join(path, 'actor_body.pt')
         model = copy.deepcopy(ppo_runner.alg.actor_critic.actor_body).to('cpu')
@@ -122,13 +128,13 @@ def play(args):
         ax_eepos.legend()
     
 
-    env.play = False
+    env.play = True
     policy_info = {}
     for i in range(100*int(env.max_episode_length)):
         actions = policy(obs, policy_info)
         # breakpoint()
         if FIX_COMMAND:
-            env.commands[:, 0] = 0.    # 1.0
+            env.commands[:, 0] = 0.3    # 1.0
             env.commands[:, 1] = 0.
             env.commands[:, 2] = 0.0
             env.commands[:, 3] = 0.
@@ -138,8 +144,8 @@ def play(args):
             ee_force_pred = policy_info["latents"][0, 6:9]
             vector1_ee_force = ee_force_pred
             vector2_ee_force = env.forces_local[0, env.gripper_idx].detach().cpu().numpy() * env.obs_scales.ee_force
-            # print("ee_force_pred:", ee_force_pred*100)
-            # print("ee_force_ext:", vector2_ee_force*100)
+            print("ee_force_pred:", ee_force_pred*100)
+            print("ee_force_ext:", vector2_ee_force*100)
             line1_ee_force.set_data([0, vector1_ee_force[0]], [0, vector1_ee_force[1]])
             line1_ee_force.set_3d_properties([0, vector1_ee_force[2]])
 
@@ -151,11 +157,11 @@ def play(args):
             vector2_base_force = env.forces_local[0,env.robot_base_idx].detach().cpu().numpy() * env.obs_scales.base_force
             print("ee_base_pred:", base_force_pred*100)
             print("ee_base_ext:", vector2_base_force*100)
-            line1_base_force.set_data([0, vector1_base_force[0]], [0, vector1_base_force[1]])
-            line1_base_force.set_3d_properties([0, vector1_base_force[2]])
+            # line1_base_force.set_data([0, vector1_base_force[0]], [0, vector1_base_force[1]])
+            # line1_base_force.set_3d_properties([0, vector1_base_force[2]])
 
-            line2_base_force.set_data([0, vector2_base_force[0]], [0, vector2_base_force[1]])
-            line2_base_force.set_3d_properties([0, vector2_base_force[2]])
+            # line2_base_force.set_data([0, vector2_base_force[0]], [0, vector2_base_force[1]])
+            # line2_base_force.set_3d_properties([0, vector2_base_force[2]])
             
 
             # linvel_pred = policy_info["latents"][0, 0:3]
@@ -185,6 +191,6 @@ if __name__ == '__main__':
     RECORD_FRAMES = False
     MOVE_CAMERA = False
     FIX_COMMAND = True
-    VISUAL_PRED = False
+    VISUAL_PRED = True
     args = get_args()
     play(args)

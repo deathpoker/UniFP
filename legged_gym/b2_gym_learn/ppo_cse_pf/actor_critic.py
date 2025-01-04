@@ -6,11 +6,13 @@ from torch.distributions import Normal
 
 class AC_Args(PrefixProto, cli=False):
 
-    adaptation_module_branch_hidden_dims = [256, 128]
+    adaptation_module_encoder_hidden_dims = [512, 256, 128]
+
+    adaptation_module_decoder_hidden_dims = [128, 64]
     
     adaptation_labels = ["base_velocity_loss", "gripper_pos_loss", "force_ee_loss", "force_base_loss"] #, "force_loss"]
     adaptation_dims = [3, 3, 3, 3] #, 3]
-    adaptation_weights = [0.5, 0.5, 5.0, 5.0] #, 1]
+    adaptation_weights = [.2, .2, 1.0, 1.0] #, 1]
 
 
 class ActorCritic(nn.Module):
@@ -19,6 +21,7 @@ class ActorCritic(nn.Module):
     def __init__(self,  num_obs,
                         num_privileged_obs,
                         num_obs_pred,
+                        num_single_obs,
                         num_actions,
                         actor_hidden_dims=[256, 256, 256],
                         critic_hidden_dims=[256, 256, 256],
@@ -40,29 +43,46 @@ class ActorCritic(nn.Module):
         self.num_obs = num_obs
         self.num_privileged_obs = num_privileged_obs
         self.num_obs_pred = num_obs_pred
+        self.num_latent_dim = int(num_obs / num_single_obs) * 2
+        self.num_obs_now = num_single_obs
 
         activation = get_activation(activation)
 
         # Adaptation module
-        adaptation_module_layers = []
-        adaptation_module_layers.append(nn.Linear(self.num_obs, AC_Args.adaptation_module_branch_hidden_dims[0]))
-        adaptation_module_layers.append(activation)
-        for l in range(len(AC_Args.adaptation_module_branch_hidden_dims)):
-            if l == len(AC_Args.adaptation_module_branch_hidden_dims) - 1:
-                adaptation_module_layers.append(
-                    nn.Linear(AC_Args.adaptation_module_branch_hidden_dims[l], self.num_obs_pred))
+        adaptation_module_encoder_layers = []
+        adaptation_module_encoder_layers.append(nn.Linear(self.num_obs, AC_Args.adaptation_module_encoder_hidden_dims[0]))
+        adaptation_module_encoder_layers.append(activation)
+        for l in range(len(AC_Args.adaptation_module_encoder_hidden_dims)):
+            if l == len(AC_Args.adaptation_module_encoder_hidden_dims) - 1:
+                adaptation_module_encoder_layers.append(
+                    nn.Linear(AC_Args.adaptation_module_encoder_hidden_dims[l], self.num_latent_dim))
             else:
-                adaptation_module_layers.append(
-                    nn.Linear(AC_Args.adaptation_module_branch_hidden_dims[l],
-                              AC_Args.adaptation_module_branch_hidden_dims[l + 1]))
-                adaptation_module_layers.append(activation)
-        self.adaptation_module = nn.Sequential(*adaptation_module_layers)
+                adaptation_module_encoder_layers.append(
+                    nn.Linear(AC_Args.adaptation_module_encoder_hidden_dims[l],
+                              AC_Args.adaptation_module_encoder_hidden_dims[l + 1]))
+                adaptation_module_encoder_layers.append(activation)
+        self.adaptation_encoder_module = nn.Sequential(*adaptation_module_encoder_layers)
+
+
+        adaptation_module_decoder_layers = []
+        adaptation_module_decoder_layers.append(nn.Linear(self.num_latent_dim, AC_Args.adaptation_module_decoder_hidden_dims[0]))
+        adaptation_module_decoder_layers.append(activation)
+        for l in range(len(AC_Args.adaptation_module_decoder_hidden_dims)):
+            if l == len(AC_Args.adaptation_module_decoder_hidden_dims) - 1:
+                adaptation_module_decoder_layers.append(
+                    nn.Linear(AC_Args.adaptation_module_decoder_hidden_dims[l], self.num_obs_pred))
+            else:
+                adaptation_module_decoder_layers.append(
+                    nn.Linear(AC_Args.adaptation_module_decoder_hidden_dims[l],
+                              AC_Args.adaptation_module_decoder_hidden_dims[l + 1]))
+                adaptation_module_decoder_layers.append(activation)
+        self.adaptation_decoder_module = nn.Sequential(*adaptation_module_decoder_layers)
 
 
 
         # Policy
         actor_layers = []
-        actor_layers.append(nn.Linear(self.num_obs_pred + self.num_obs, actor_hidden_dims[0]))
+        actor_layers.append(nn.Linear(self.num_obs_now + self.num_latent_dim, actor_hidden_dims[0]))
         actor_layers.append(activation)
         for l in range(len(actor_hidden_dims)):
             if l == len(actor_hidden_dims) - 1:
@@ -84,7 +104,8 @@ class ActorCritic(nn.Module):
                 critic_layers.append(activation)
         self.critic_body = nn.Sequential(*critic_layers)
 
-        print(f"Adaptation Module: {self.adaptation_module}")
+        print(f"Adaptation Encoder Module: {self.adaptation_encoder_module}")
+        print(f"Adaptation Decoder Module: {self.adaptation_decoder_module}")
         print(f"Actor MLP: {self.actor_body}")
         print(f"Critic MLP: {self.critic_body}")
 
@@ -120,8 +141,8 @@ class ActorCritic(nn.Module):
         return self.distribution.entropy().sum(dim=-1)
 
     def update_distribution(self, observations):
-        latent = self.adaptation_module(observations)
-        mean = self.actor_body(torch.cat((observations, latent), dim=-1))
+        latent = self.adaptation_encoder_module(observations)
+        mean = self.actor_body(torch.cat((observations[:, -self.num_obs_now:], latent), dim=-1))
         self.distribution = Normal(mean, mean*0. + self.std)
 
     def act(self, observations, **kwargs):
@@ -138,9 +159,10 @@ class ActorCritic(nn.Module):
         return self.act_student(ob["obs"], policy_info=policy_info)
 
     def act_student(self, observations, policy_info={}):
-        latent = self.adaptation_module(observations)
-        actions_mean = self.actor_body(torch.cat((observations, latent), dim=-1))
-        policy_info["latents"] = latent.detach().cpu().numpy()
+        latent = self.adaptation_encoder_module(observations)
+        actions_mean = self.actor_body(torch.cat((observations[:, -self.num_obs_now:], latent), dim=-1))
+        obs_pred = self.adaptation_decoder_module(latent)
+        policy_info["latents"] = obs_pred.detach().cpu().numpy()
         return actions_mean
 
     def act_teacher(self, critic_observations, pred_obs, policy_info={}):
@@ -153,7 +175,9 @@ class ActorCritic(nn.Module):
         return value
 
     def get_student_latent(self, observations):
-        return self.adaptation_module(observations)
+        latent = self.adaptation_encoder_module(observations)
+        obs_pred = self.adaptation_decoder_module(latent)
+        return obs_pred
 
 def get_activation(act_name):
     if act_name == "elu":
