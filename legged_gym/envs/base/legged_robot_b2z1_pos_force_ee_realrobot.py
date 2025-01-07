@@ -1063,7 +1063,9 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         Args:
             env_ids (List[int]): Environemnt ids
         """
-        self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
+        self.dof_pos[env_ids] = self.default_dof_pos
+        self.dof_pos[env_ids, :12] = self.default_dof_pos[:, :12]* torch_rand_float(0.5, 1.5, (len(env_ids), 12), device=self.device)
+        self.dof_pos[env_ids, 12:17] += torch_rand_float(-0.5, 0.5, (len(env_ids), self.num_actions-12), device=self.device)
         self.dof_vel[env_ids] = 0.
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
