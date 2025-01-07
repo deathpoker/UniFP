@@ -156,7 +156,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
         settling_time_force_gripper_s = 1.0
 
         # Push base
-        push_robot_base = True
+        push_robot_base = False
         push_base_interval_s_cmd = [3.5, 9.0]
         push_base_duration_s_cmd = [1.0, 3.0]
         base_forced_prob_cmd = 0.8
@@ -175,7 +175,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
 
         settling_time_force_base_s = 3.0
 
-        force_start_step = 10000
+        force_start_step = 0
     class terrain:
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         hf2mesh_method = "fast"  # grid or fast
