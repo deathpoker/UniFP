@@ -7,6 +7,7 @@ from legged_gym.envs.b2.b2z1_config import B2Z1RoughCfg, B2Z1RoughCfgPPO
 from legged_gym.envs.b2.b2z1_realrobot_config import B2Z1RealRobotRoughCfg, B2Z1RealRobotRoughCfgPPO
 from legged_gym.envs.b2.b2z1_force_realrobot_config import B2Z1ForceRealRobotRoughCfg, B2Z1ForceRealRobotRoughCfgPPO
 from legged_gym.envs.b2.b2z1_pos_force_realrobot_config import B2Z1PosForceRealRobotRoughCfg, B2Z1PosForceRealRobotRoughCfgPPO
+from legged_gym.envs.b2.b2z1_pos_force_ee_realrobot_config import B2Z1PosForceEERealRobotRoughCfg, B2Z1PosForceEERealRobotRoughCfgPPO
 from legged_gym.envs.b2.z1_realrobot_config import Z1RealRobotRoughCfg, Z1RealRobotRoughCfgPPO
 from legged_gym.envs.b2.z1_force_realrobot_config import Z1ForceRealRobotRoughCfg, Z1ForceRealRobotRoughCfgPPO
 from legged_gym.envs.h1.h1_config import H1RoughCfg, H1RoughCfgPPO
@@ -18,6 +19,7 @@ from .base.legged_robot_b2z1 import LeggedRobotB2Z1
 from .base.legged_robot_b2z1_realrobot import LeggedRobot_b2z1_realrobot
 from .base.legged_robot_b2z1_force_realrobot import LeggedRobot_b2z1_force_realrobot
 from .base.legged_robot_b2z1_pos_force_realrobot import LeggedRobot_b2z1_pos_force_realrobot
+from .base.legged_robot_b2z1_pos_force_ee_realrobot import LeggedRobot_b2z1_pos_force_ee_realrobot
 from .base.legged_robot_z1_force_realrobot import LeggedRobot_z1_force_realrobot
 from .base.legged_robot_z1_realrobot import LeggedRobot_z1_realrobot
 from .base.legged_robot_humanoidgym import LeggedRobotHumanoidGym
@@ -38,6 +40,7 @@ task_registry.register( "b2z1", LeggedRobotB2Z1, B2Z1RoughCfg(), B2Z1RoughCfgPPO
 task_registry.register( "b2z1_realrobot", LeggedRobot_b2z1_realrobot, B2Z1RealRobotRoughCfg(), B2Z1RealRobotRoughCfgPPO())
 task_registry_b2z1force.register( "b2z1_force_realrobot", LeggedRobot_b2z1_force_realrobot, B2Z1ForceRealRobotRoughCfg(), B2Z1ForceRealRobotRoughCfgPPO())
 task_registry_b2z1posforce.register( "b2z1_pos_force_realrobot", LeggedRobot_b2z1_pos_force_realrobot, B2Z1PosForceRealRobotRoughCfg(), B2Z1PosForceRealRobotRoughCfgPPO())
+task_registry_b2z1posforce.register( "b2z1_pos_force_ee_realrobot", LeggedRobot_b2z1_pos_force_ee_realrobot, B2Z1PosForceEERealRobotRoughCfg(), B2Z1PosForceEERealRobotRoughCfgPPO())
 task_registry.register( "z1_realrobot", LeggedRobot_z1_realrobot, Z1RealRobotRoughCfg(), Z1RealRobotRoughCfgPPO())
 task_registry_b2z1force.register( "z1_force_realrobot", LeggedRobot_z1_force_realrobot, Z1ForceRealRobotRoughCfg(), Z1ForceRealRobotRoughCfgPPO())
 task_registry.register( "h1", LeggedRobot, H1RoughCfg(), H1RoughCfgPPO())

@@ -913,7 +913,10 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         
-        zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
+        if self.global_steps > self.cfg.commands.force_start_step * 24:
+            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob_after_force
+        else:
+            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
         self.commands[env_ids, :3] *= ~zero_cmd_mask.unsqueeze(1)
 
 
@@ -2199,7 +2202,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
     
     def _reward_feet_height_high(self):
         feet_height = self.rigid_state[:, self.feet_indices, 2]
-        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.18, min=0)
+        rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.20, min=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
         return rew
