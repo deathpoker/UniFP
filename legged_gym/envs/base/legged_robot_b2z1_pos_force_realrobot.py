@@ -988,7 +988,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
             ee_pos_sphe_arm = torch.cat((radius, pitch, yaw), dim=1).view(self.num_envs,3)
 
             if is_init:
-                if self.global_steps < 2000 * 24 :
+                if self.global_steps < 0 * 24 :
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]
@@ -997,7 +997,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
             else:
-                if self.global_steps < 2000 * 24 :
+                if self.global_steps < 0 * 24 :
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]

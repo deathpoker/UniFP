@@ -289,7 +289,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             energy_square_stand = -1e-7
             energy_square_arm = -5e-7
             torques = -3.e-6 # -1e-5 # 惩罚力量大小
-            stand_still = 0.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
+            stand_still = 1.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
             # walking_dof = 1.0 # 和上面一样
             # walking_ref_dof = 1.0
             ref_dof_leg = 0.5
@@ -317,7 +317,6 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             collision = -5. # 惩罚大腿小腿躯干触地
             # action_smoothness = -0.02
             action_rate = -0.015 # 惩罚action 变化速度
-            action_rate_arm = -0.045 # 惩罚action 变化速度
             action_rate_arm = -0.045 # 惩罚action 变化速度
             dof_pos_limits = -10.0 #惩罚 超过限位角度
             torque_limits = -0.005
