@@ -1,7 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 import numpy as np
 
-class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
+class B2Z1PosForceEERealRobotRoughCfg( LeggedRobotCfg ):
 
     class goal_ee:
         
@@ -109,14 +109,14 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
         num_single_obs = 73
         num_pred_obs = 12
         num_observations = int(frame_stack * num_single_obs)
-        single_num_privileged_obs = 151
+        single_num_privileged_obs = 149
         num_privileged_obs = int(c_frame_stack * single_num_privileged_obs)
 
         observe_gait_commands = False
         frequencies = 1.0
 
         action_delay = 3 # Not used, assigned in code
-        teleop_mode = False
+        teleop_mode = True
 
     class commands:
         curriculum = False
@@ -156,7 +156,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
         settling_time_force_gripper_s = 1.0
 
         # Push base
-        push_robot_base = False
+        push_robot_base = True
         push_base_interval_s_cmd = [3.5, 9.0]
         push_base_duration_s_cmd = [1.0, 3.0]
         base_forced_prob_cmd = 0.8
@@ -175,7 +175,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
 
         settling_time_force_base_s = 3.0
 
-        force_start_step = 5000
+        force_start_step = 1000
     class terrain:
         mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         hf2mesh_method = "fast"  # grid or fast
@@ -239,7 +239,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
         grasp_offset = 0.08
 
     class asset( LeggedRobotCfg.asset ):
-        file = '/home/peiyang/project/unitree/b2z1/WBC/resources/robots/b2z1/b2z1_new.urdf'
+        file = '/home/zhipy/project/unitree_rl_gym/resources/robots/b2z1/b2z1_new.urdf'
         name = "b2z1"
         foot_name = "foot"
         thigh_name = "thigh"
@@ -264,15 +264,15 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
 
         cycle_time = 0.64
         target_joint_pos_scale = 0.17
-        target_joint_pos_thd = 0.7
+        target_joint_pos_thd = 0.5
 
         sigma_force = 1/50
         
         class scales: # ( ManipLocoCfg.rewards.scales ):
             # reference motion tracking
-            # feet_contact_number = 2.0
-            feet_contact_number_walking = 2.0
-            feet_contact_number_standing = 1.5
+            feet_contact_number = 2.0
+            # feet_contact_number_walking = 2.0
+            # feet_contact_number_standing = 1.5
             
             # tracking_lin_vel = 2. # 1.5  # track x轴方向速度
             tracking_lin_vel_force_world = 2.0
@@ -285,14 +285,14 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # delta_torques = -1.0e-6 # 惩罚力量大小变化
             # work = 0
             # energy = -1e-6
-            energy_square = -1e-7
-            energy_square_stand = -1e-7
-            energy_square_arm = -5e-7
-            torques = -3.e-6 # -1e-5 # 惩罚力量大小
-            stand_still = 1.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
+            # energy_square = -5e-8
+            # energy_square_stand = -1e-7
+            # energy_square_arm = -5e-7
+            torques = -5.e-6 # -1e-5 # 惩罚力量大小
+            stand_still = 0.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
             # walking_dof = 1.0 # 和上面一样
             # walking_ref_dof = 1.0
-            ref_dof_leg = 0.5
+            ref_dof_leg = 1.0
             # walking_ref_swing_dof = 2.0
             # walking_ref_stand_dof = 2.0
             # joint_pos = 1.6
@@ -306,8 +306,8 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             # # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
 
             # # common rewards
-            feet_air_time = 0 # 奖励脚腾空时间 1.0
-            feet_height = 1.2 # 奖励脚腾空高度
+            feet_air_time = 1.0 # 奖励脚腾空时间
+            feet_height = 1.0 # 奖励脚腾空高度
             # feet_hind_height = 1.0 # 奖励后腿脚腾空高度
             ang_vel_xy = -0.02 # -0.1 # 惩罚过快的转弯速度
             dof_acc = -2.5e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
@@ -322,7 +322,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             torque_limits = -0.005
             hip_pos = -0.5  # 惩罚髋关节与default pos的差别
             # feet_jerk = -0.0002 # 惩罚关节力抽抽
-            # feet_drag = -0.0008 # 惩罚脚拖地滑行
+            feet_drag = -0.0008 # 惩罚脚拖地滑行
             feet_contact_forces = -0.001 # 惩罚大于 max_contact_force的关节力量
             # orientation = 0.0
             # orientation_walking = 0.0
@@ -355,7 +355,7 @@ class B2Z1PosForceRealRobotRoughCfg( LeggedRobotCfg ):
             tracking_ee_orn = 0.
             tracking_ee_orn_ry = 0.
 
-class B2Z1PosForceRealRobotRoughCfgPPO( LeggedRobotCfgPPO ):
+class B2Z1PosForceEERealRobotRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
     class policy:

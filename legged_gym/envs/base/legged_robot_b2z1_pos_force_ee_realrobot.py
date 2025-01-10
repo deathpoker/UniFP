@@ -18,7 +18,7 @@ from legged_gym.utils.math import wrap_to_pi
 from legged_gym.utils.helpers import class_to_dict
 from legged_gym.utils.terrain_b2 import Terrain, Terrain_Perlin
 
-from legged_gym.envs.b2.b2z1_pos_force_realrobot_config import B2Z1PosForceRealRobotRoughCfg
+from legged_gym.envs.b2.b2z1_pos_force_ee_realrobot_config import B2Z1PosForceEERealRobotRoughCfg
 
 import matplotlib.pyplot as plt
 
@@ -44,8 +44,8 @@ def get_euler_xyz_tensor(quat):
     euler_xyz[euler_xyz > np.pi] -= 2 * np.pi
     return euler_xyz
 
-class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
-    def __init__(self, cfg: B2Z1PosForceRealRobotRoughCfg, sim_params, physics_engine, sim_device, headless):
+class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
+    def __init__(self, cfg: B2Z1PosForceEERealRobotRoughCfg, sim_params, physics_engine, sim_device, headless):
         """ Parses the provided config file,
             calls create_sim() (which creates, simulation and environments),
             initilizes pytorch buffers used during training
@@ -153,7 +153,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
                 # push gripper
                 self._push_gripper(torch.arange(self.num_envs, device=self.device))      
                 # push robot base 
-                self._push_robot_base(torch.arange(self.num_envs, device=self.device)) 
+                # self._push_robot_base(torch.arange(self.num_envs, device=self.device)) 
             self.gym.apply_rigid_body_force_tensors(self.sim, gymtorch.unwrap_tensor(self.forces), None, gymapi.GLOBAL_SPACE)
             self.gym.simulate(self.sim)
             self.gym.refresh_dof_state_tensor(self.sim)
@@ -261,6 +261,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.last_dof_vel[env_ids] = 0.
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
+        self.gait_indices[env_ids] = 0
         self.reset_buf[env_ids] = 1
         self.goal_timer[env_ids] = 0.
 
@@ -390,12 +391,12 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         ee_goal_offset_local_cart = quat_rotate_inverse(self.base_yaw_quat, curr_ee_goal_cart_world_offset - self.get_ee_goal_spherical_center())
         ee_goal_offset_local_sphere = cart2sphere(ee_goal_offset_local_cart)
 
-        forces_global_base = self.forces[:, self.robot_base_idx, 0:3]
-        forces_local_base = quat_rotate_inverse(self.base_yaw_quat, forces_global_base).view(self.num_envs, 3)
+        # forces_global_base = self.forces[:, self.robot_base_idx, 0:3]
+        # forces_local_base = quat_rotate_inverse(self.base_yaw_quat, forces_global_base).view(self.num_envs, 3)
     
-        forces_cmd_local_base = self.current_Fxyz_base_cmd
-        forces_offset_base = (forces_local_base + forces_cmd_local_base)
-        base_lin_vel_offset = (forces_offset_base / self.base_force_kds)[:, :2] + self.commands[:, :2]
+        # forces_cmd_local_base = self.current_Fxyz_base_cmd
+        # forces_offset_base = (forces_local_base + forces_cmd_local_base)
+        # base_lin_vel_offset = (forces_offset_base / self.base_force_kds)[:, :2] + self.commands[:, :2]
 
         self.privileged_obs_buf = torch.cat((
                                     self.base_lin_vel * self.obs_scales.lin_vel, # 3
@@ -418,7 +419,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
                                     sin_pos, # 1
                                     cos_pos, # 1
                                     (self.commands * self.commands_scale)[:, :15], # dim 15
-                                    base_lin_vel_offset * self.obs_scales.lin_vel, # dim 2
+                                    # base_lin_vel_offset * self.obs_scales.lin_vel, # dim 2
                                     ee_goal_offset_local_sphere[:, 0:1] * self.obs_scales.ee_sphe_radius_cmd, 
                                     ee_goal_offset_local_sphere[:, 1:2] * self.obs_scales.ee_sphe_pitch_cmd,
                                     ee_goal_offset_local_sphere[:, 2:3] * self.obs_scales.ee_sphe_yaw_cmd, # 3
@@ -894,12 +895,14 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self._randomize_dof_props(env_ids)
         self._step_contact_targets()
 
-        if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0) and self.global_steps < self.cfg.commands.force_start_step * 24:
+        if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
             self._push_robots()
 
     def _step_contact_targets(self):
         cycle_time = self.cfg.rewards.cycle_time
         standing_mask = ~self.get_walking_cmd_mask()
+        self.gait_indices = torch.remainder(self.gait_indices + self.dt / cycle_time, 1.0)
+        self.gait_indices[standing_mask] = 0
 
     def _resample_commands(self, env_ids):
         """ Randommly select commands of some environments
@@ -913,10 +916,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         
-        if self.global_steps > self.cfg.commands.force_start_step * 24:
-            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob_after_force
-        else:
-            zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
+        zero_cmd_mask = torch.rand(len(env_ids), dtype=torch.float, device=self.device, requires_grad=False) < self.cfg.commands.zero_vel_cmd_prob
         self.commands[env_ids, :3] *= ~zero_cmd_mask.unsqueeze(1)
 
         # set small commands to zero
@@ -988,7 +988,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
             ee_pos_sphe_arm = torch.cat((radius, pitch, yaw), dim=1).view(self.num_envs,3)
 
             if is_init:
-                if self.global_steps < 0 * 24 :
+                if self.global_steps < 0 * 24 and not self.play:
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]
@@ -997,7 +997,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_end_ee_sphere[:]
             else:
-                if self.global_steps < 0 * 24 :
+                if self.global_steps < 0 * 24 and not self.play:
                     self.ee_goal_orn_delta_rpy[env_ids, :] = 0
                     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[:]
                     self.ee_goal_sphere[env_ids] = self.init_start_ee_sphere[:]
@@ -1578,6 +1578,9 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.default_dof_pos = self.default_dof_pos.unsqueeze(0)
         self.default_dof_pos_wo_gripper = self.default_dof_pos[:, :-self.cfg.env.num_gripper_joints]
         
+        # gait
+        self.gait_indices = torch.zeros(self.num_envs, dtype=torch.float, device=self.device,
+                                        requires_grad=False)
         
         self.foot_velocities = self.rigid_state.view(self.num_envs, self.num_bodies, 13)[:,
                                self.feet_indices,
@@ -1866,30 +1869,11 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
 
         self.stop_update_goal = False
 
-    # def get_walking_cmd_mask(self, env_ids=None, return_all=False):
-    #     if env_ids is None:
-    #         env_ids = torch.arange(self.num_envs, device=self.device)
-    #     walking_mask0 = torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip
-    #     walking_mask1 = torch.abs(self.commands[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip
-    #     walking_mask2 = torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip
-    #     walking_mask = walking_mask0 | walking_mask1 | walking_mask2
-
-    #     # walking_mask = walking_mask | ((self.episode_length_buf * self.dt / self.cfg.rewards.cycle_time) % (2*torch.pi) >= self.dt / self.cfg.rewards.cycle_time)
-    #     if return_all:
-    #         return walking_mask0, walking_mask1, walking_mask2, walking_mask
-    #     return walking_mask
-
     def get_walking_cmd_mask(self, env_ids=None, return_all=False):
         if env_ids is None:
             env_ids = torch.arange(self.num_envs, device=self.device)
-        forces_global_base = self.forces[:, self.robot_base_idx, 0:3]
-        forces_local_base = quat_rotate_inverse(self.base_yaw_quat, forces_global_base).view(self.num_envs, 3)
-    
-        forces_cmd_local = self.current_Fxyz_base_cmd
-        forces_offset = (forces_local_base + forces_cmd_local)
-        base_lin_vel_offset = (forces_offset / self.base_force_kds)[:, :2] + self.commands[:, :2]
-        walking_mask0 = torch.abs(base_lin_vel_offset[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip
-        walking_mask1 = torch.abs(base_lin_vel_offset[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip
+        walking_mask0 = torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip
+        walking_mask1 = torch.abs(self.commands[env_ids, 1]) > self.cfg.commands.lin_vel_y_clip
         walking_mask2 = torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip
         walking_mask = walking_mask0 | walking_mask1 | walking_mask2
 
@@ -1897,10 +1881,10 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         if return_all:
             return walking_mask0, walking_mask1, walking_mask2, walking_mask
         return walking_mask
-    
+
+
     def  _get_phase(self):
-        cycle_time = self.cfg.rewards.cycle_time
-        phase = self.episode_length_buf * self.dt / cycle_time
+        phase = self.gait_indices
         return phase
 
     def _get_gait_phase(self):
@@ -1919,10 +1903,6 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         # FR RL foot stance
         stance_mask[:, 1] = sin_pos_r < 0
         stance_mask[:, 2] = sin_pos_r < 0
-
-
-        stand_mask = ~self.get_walking_cmd_mask()
-        stance_mask[stand_mask] = torch.ones ((self.num_envs, 4), device=self.device)[stand_mask]
         # Double support phase
         # stance_mask[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = 1
 
@@ -1952,9 +1932,6 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self.ref_dof_pos[:, 5] -= sin_pos_r * scale_2 # FR_calf_joint
         self.ref_dof_pos[:, 7] += sin_pos_r * scale_1 # RL_thigh_joint
         self.ref_dof_pos[:, 8] -= sin_pos_r * scale_2 # RL_calf_joint
-        
-        stand_mask = ~self.get_walking_cmd_mask()
-        self.ref_dof_pos[stand_mask] = repeat_default_pos.clone()[stand_mask]
         # self.ref_dof_pos[:, 9] -= sin_pos_r * scale_1 # right_ankle
         # stand still phase
         # self.ref_dof_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = repeat_default_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd]

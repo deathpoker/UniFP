@@ -399,7 +399,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
                                     self.actions[:, :17], # dim 17
                                     sin_pos, # 1
                                     cos_pos, # 1
-                                    (self.commands * self.commands_scale)[:, :115], # dim 15
+                                    (self.commands * self.commands_scale)[:, :15], # dim 15
                                     # ee_goal_local_cart,  # dim 3 position
                                     # ee_pos_sphe_arm, # 3
                                     # self.curr_ee_goal_sphere,  # dim 3 orientation
@@ -872,7 +872,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
         self._randomize_dof_props(env_ids)
         self._step_contact_targets()
 
-        if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0) and self.global_steps < self.cfg.commands.force_start_step:
+        if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0) and self.global_steps < self.cfg.commands.force_start_step * 24:
             self._push_robots()
 
     def _step_contact_targets(self):
@@ -896,7 +896,7 @@ class LeggedRobot_b2z1_pos_force_realrobot(BaseTask):
 
         # set small commands to zero
         non_stop_sign = (torch.logical_or(torch.abs(self.commands[env_ids, 0]) > self.cfg.commands.lin_vel_x_clip, torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip))
-        self.commands[env_ids, :] *= non_stop_sign.unsqueeze(1)
+        self.commands[env_ids, :3] *= non_stop_sign.unsqueeze(1)
 
     def control_ik(self, dpose):
         # solve damped least squares
