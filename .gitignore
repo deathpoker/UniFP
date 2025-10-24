@@ -1,7 +1,10 @@
 __pycache__
 logs
-
+Humanoid_robot_deployment
 .idea
 .vscode
 wandb
 debug.py
+ckpt
+.history
+*.png

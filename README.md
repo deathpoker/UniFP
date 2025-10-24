@@ -1,65 +1,198 @@
-# Unitree RL GYM
+# UniFP - Unified Force and Position Control
 
-This is a simple example of using Unitree Robots for reinforcement learning, including Unitree Go2, H1, H1_2, G1
+[![IsaacGym](https://img.shields.io/badge/IsaacGym-1.0.0-silver.svg)](https://developer.nvidia.com/isaac-gym)
+[![Python](https://img.shields.io/badge/python-3.8-blue.svg)](https://docs.python.org/3/whatsnew/3.8.html)
+[![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/20.04/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-1.12.0-red.svg)](https://pytorch.org/)
 
-### Installation
+## Overview
 
-1. Create a new python virtual env with python 3.6, 3.7 or 3.8 (3.8 recommended)
-2. Install pytorch 1.10 with cuda-11.3:
+This project implements a reinforcement learning-based whole body control framework for B2Z1 robots, supporting unified policy learning for both position and force control. The framework uses Isaac Gym for simulation training and supports deployment from simulation to real robots.
 
+**Key Features**:
+- Support for B2Z1 robot whole body control
+- Unified policy learning for position and force control
+- Reinforcement learning training based on PPO algorithm
+- Support for multiple robot configurations (B2, H1, G1, etc.)
+- Complete simulation-to-real deployment pipeline
+
+## Installation
+
+### System Requirements
+- Ubuntu 20.04/22.04
+- Python 3.8
+- CUDA 11.2+
+- Isaac Gym Preview 4 (requires NVIDIA developer account)
+
+### Installation Steps
+
+1. **Install Isaac Gym**
+   ```bash
+   # Download Isaac Gym Preview 4 from NVIDIA developer website
+   # Extract to specified directory, e.g.: /home/username/isaacgym
+   cd /home/username/isaacgym
+   python setup.py develop
    ```
-   pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
+2. **Clone this project**
+   ```bash
+   git clone <your-repo-url>
+   cd WBC
    ```
-3. Install Isaac Gym
 
-   - Download and install Isaac Gym Preview 4 from [https://developer.nvidia.com/isaac-gym](https://developer.nvidia.com/isaac-gym)
-   - `cd isaacgym/python && pip install -e .`
-   - Try running an example `cd examples && python 1080_balls_of_solitude.py`
-   - For troubleshooting check docs isaacgym/docs/index.html
-4. Install rsl_rl (PPO implementation)
+3. **Install Python dependencies**
+   ```bash
+   # Create conda environment
+   conda create -n b2z1_wbc python=3.8
+   conda activate b2z1_wbc
+   
+   # Install PyTorch (select based on CUDA version)
+   conda install pytorch==1.12.0 torchvision==0.13.0 torchaudio==0.12.0 cudatoolkit=11.3 -c pytorch
+   
+   # Install other dependencies
+   pip install numpy matplotlib wandb
+   ```
 
-   - Clone [https://github.com/leggedrobotics/rsl_rl](https://github.com/leggedrobotics/rsl_rl)
-   - `cd rsl_rl && git checkout v1.0.2 && pip install -e .`
+4. **Set environment variables**
+   ```bash
+   export ISAACGYM_PATH=/home/username/isaacgym
+   export PYTHONPATH=$PYTHONPATH:$ISAACGYM_PATH
+   ```
 
-### Usage
+## Usage
 
-1. Train:
-   `python legged_gym/scripts/train.py --task=go2`
+### Policy Training
 
-   * To run on CPU add following arguments: `--sim_device=cpu`, `--rl_device=cpu` (sim on CPU and rl on GPU is possible).
-   * To run headless (no rendering) add `--headless`.
-   * **Important** : To improve performance, once the training starts press `v` to stop the rendering. You can then enable it later to check the progress.
-   * The trained policy is saved in `logs/<experiment_name>/<date_time>_<run_name>/model_<iteration>.pt`. Where `<experiment_name>` and `<run_name>` are defined in the train config.
-   * The following command line arguments override the values set in the config files:
-   * --task TASK: Task name.
-   * --resume: Resume training from a checkpoint
-   * --experiment_name EXPERIMENT_NAME: Name of the experiment to run or load.
-   * --run_name RUN_NAME: Name of the run.
-   * --load_run LOAD_RUN: Name of the run to load when resume=True. If -1: will load the last run.
-   * --checkpoint CHECKPOINT: Saved model checkpoint number. If -1: will load the last checkpoint.
-   * --num_envs NUM_ENVS: Number of environments to create.
-   * --seed SEED: Random seed.
-   * --max_iterations MAX_ITERATIONS: Maximum number of training iterations.
-2. Play:`python legged_gym/scripts/play.py --task=go2`
+#### B2Z1 Position-Force Control Training
+```bash
+cd legged_gym/scripts
+python train_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --headless
+```
 
-   * By default, the loaded policy is the last model of the last run of the experiment folder.
-   * Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
+#### B2Z1 Force Control Training
+```bash
+python train_b2z1force.py --task=b2z1_force_realrobot --headless
+```
 
-### Robots Demo
+#### Other Robot Training
+```bash
+# H1 robot training
+python train.py --task=h1 --headless
 
-1. Go2
+# G1 robot training  
+python train_humanoidgym.py --task=g1_humanoidgym --headless
+```
 
-https://github.com/user-attachments/assets/98395d82-d3f6-4548-b6ee-8edfce70ac3e
+### Policy Evaluation and Testing
 
-2. H1
+#### Run Trained Policies
+```bash
+# B2Z1 position-force control testing
+python play_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --load_run=<run_name>
 
-https://github.com/user-attachments/assets/a9475a63-ea06-4327-bfa6-6a0f8065fa1c
+# B2Z1 force control testing
+python play_b2z1force.py --task=b2z1_force_realrobot --load_run=<run_name>
+```
 
-3. H1-2
+#### Visualize Prediction Results
+```bash
+# Enable visualization prediction
+python play_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --load_run=<run_name>
+# Set VISUAL_PRED = True in the script
+```
 
-https://github.com/user-attachments/assets/a937e9c4-fe91-4240-88ea-d83b0160cad5
+### Parameter Configuration
 
-4. G1
+#### Training Parameters
+- `--task`: Task name (b2z1_pos_force_ee_realrobot, b2z1_force_realrobot, h1, g1_humanoidgym, etc.)
+- `--headless`: Run in headless mode
+- `--num_envs`: Number of parallel environments
+- `--max_iterations`: Maximum training iterations
 
-https://github.com/user-attachments/assets/0b554137-76bc-43f9-97e1-dd704a33d6a9
+#### Environment Parameters
+- `--flat_terrain`: Use flat terrain
+- `--physics_engine`: Physics engine (physx)
+- `--sim_device`: Simulation device (cuda:0)
+
+## Project Structure
+
+```
+WBC/
+├── legged_gym/                    # Main code directory
+│   ├── envs/                      # Environment definitions
+│   │   ├── b2/                    # B2 robot related
+│   │   │   ├── b2z1_pos_force_ee_realrobot_config.py  # B2Z1 position-force control config
+│   │   │   ├── legged_robot_b2z1_pos_force_ee_realrobot.py  # B2Z1 environment implementation
+│   │   │   └── ...
+│   │   ├── h1/                    # H1 robot related
+│   │   ├── g1/                    # G1 robot related
+│   │   └── base/                  # Base environment classes
+│   ├── utils/                     # Utility functions
+│   │   ├── task_registry_b2z1posforce.py  # Task registration
+│   │   ├── helpers.py             # Helper functions
+│   │   └── ...
+│   ├── b2_gym_learn/              # Reinforcement learning algorithms
+│   │   └── ppo_cse_pf/            # PPO algorithm implementation
+│   └── scripts/                   # Training and testing scripts
+│       ├── train_b2z1posforce.py  # B2Z1 position-force control training
+│       ├── play_b2z1posforce.py   # B2Z1 position-force control testing
+│       ├── train_b2z1force.py     # B2Z1 force control training
+│       └── ...
+├── ckpt/                          # Trained model checkpoints
+├── logs/                          # Training logs
+├── resources/                     # Robot resource files
+└── deploy/                        # Deployment related files
+```
+
+### Core Components
+
+- **Environment Configuration** (`legged_gym/envs/b2/b2z1_pos_force_ee_realrobot_config.py`)
+  - Robot initial state configuration
+  - Reward function parameters
+  - Observation space definition
+  - Action space definition
+
+- **Environment Implementation** (`legged_gym/envs/b2/legged_robot_b2z1_pos_force_ee_realrobot.py`)
+  - Simulation environment logic
+  - Reward calculation
+  - Observation space construction
+  - Action execution
+
+- **Training Algorithm** (`legged_gym/b2_gym_learn/ppo_cse_pf/`)
+  - PPO algorithm implementation
+  - Policy network structure
+  - Value network structure
+
+- **Task Registration** (`legged_gym/utils/task_registry_b2z1posforce.py`)
+  - Task registration management
+  - Environment creation
+  - Trainer creation
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Task Not Registered Error**
+   ```
+   ValueError: Task with name: b2z1_pos_force_ee_realrobot was not registered
+   ```
+   **Solution**: Ensure the task is properly registered in `legged_gym/envs/__init__.py`
+
+2. **Module Import Error**
+   ```
+   ModuleNotFoundError: No module named 'legged_gym.envs.b2.legged_robot_b2z1_pos_force_ee_realrobot'
+   ```
+   **Solution**: Check if file paths and class names are correct
+
+3. **CUDA Out of Memory**
+   ```
+   RuntimeError: CUDA out of memory
+   ```
+   **Solution**: Reduce the number of parallel environments `--num_envs` or use smaller batch sizes
+
+### Debugging Tips
+
+- Use `--headless` parameter for headless training
+- Set `VISUAL_PRED = True` to visualize prediction results
+- Check log files to understand training progress
+- Use `wandb` for experiment tracking

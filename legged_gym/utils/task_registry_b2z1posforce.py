@@ -39,7 +39,7 @@ from legged_gym.b2_gym_learn.ppo_cse_pf.on_policy_runner import OnPolicyRunner
 
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from .helpers import get_args, update_cfg_from_args, class_to_dict, get_load_path, set_seed, parse_sim_params
-from legged_gym.envs.b2.b2z1_pos_force_realrobot_config import B2Z1PosForceRealRobotRoughCfg, B2Z1PosForceRealRobotRoughCfgPPO
+from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
 class TaskRegistryB2Z1PosForce():
     def __init__(self):
@@ -47,7 +47,7 @@ class TaskRegistryB2Z1PosForce():
         self.env_cfgs = {}
         self.train_cfgs = {}
     
-    def register(self, name: str, task_class: VecEnv, env_cfg: B2Z1PosForceRealRobotRoughCfg, train_cfg: B2Z1PosForceRealRobotRoughCfgPPO):
+    def register(self, name: str, task_class: VecEnv, env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO):
         self.task_classes[name] = task_class
         self.env_cfgs[name] = env_cfg
         self.train_cfgs[name] = train_cfg
@@ -55,14 +55,14 @@ class TaskRegistryB2Z1PosForce():
     def get_task_class(self, name: str) -> VecEnv:
         return self.task_classes[name]
     
-    def get_cfgs(self, name) -> Tuple[B2Z1PosForceRealRobotRoughCfg, B2Z1PosForceRealRobotRoughCfgPPO]:
+    def get_cfgs(self, name) -> Tuple[LeggedRobotCfg, LeggedRobotCfgPPO]:
         train_cfg = self.train_cfgs[name]
         env_cfg = self.env_cfgs[name]
         # copy seed
         env_cfg.seed = train_cfg.seed
         return env_cfg, train_cfg
     
-    def make_env(self, name, args=None, env_cfg=None) -> Tuple[VecEnv, B2Z1PosForceRealRobotRoughCfg]:
+    def make_env(self, name, args=None, env_cfg=None) -> Tuple[VecEnv, LeggedRobotCfg]:
         """ Creates an environment either from a registered namme or from the provided config file.
 
         Args:
@@ -102,7 +102,7 @@ class TaskRegistryB2Z1PosForce():
         self.env_cfg_for_wandb = env_cfg
         return env, env_cfg
 
-    def make_alg_runner(self, env, name=None, args=None, train_cfg=None, log_root="default") -> Tuple[OnPolicyRunner, B2Z1PosForceRealRobotRoughCfgPPO]:
+    def make_alg_runner(self, env, name=None, args=None, train_cfg=None, log_root="default") -> Tuple[OnPolicyRunner, LeggedRobotCfgPPO]:
         """ Creates the training algorithm  either from a registered namme or from the provided config file.
 
         Args:

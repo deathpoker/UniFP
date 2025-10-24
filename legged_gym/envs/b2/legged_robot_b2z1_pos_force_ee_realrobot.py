@@ -274,6 +274,18 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         self.force_target_gripper_ext[env_ids, :3] = 0.
         self.push_duration_gripper_cmd[env_ids] = 0.
         self.current_Fxyz_gripper_cmd[env_ids, :3] = 0.
+
+
+
+        self.forces[env_ids, self.robot_base_idx, :3] = 0.
+        self.selected_env_ids_base_cmd[env_ids] = 0
+        self.selected_env_ids_base_ext[env_ids] = 0
+        self.push_end_time_base_cmd[env_ids] = 0.
+        self.force_target_base_cmd[env_ids, :3] = 0.
+        self.force_target_base_ext[env_ids, :3] = 0.
+        self.push_duration_base_cmd[env_ids] = 0.
+        self.current_Fxyz_base_cmd[env_ids, :3] = 0.
+        
         self.commands[env_ids, INDEX_EE_FORCE_X] = 0.0
         self.commands[env_ids, INDEX_EE_FORCE_Y] = 0.0
         self.commands[env_ids, INDEX_EE_FORCE_Z] = 0.0
@@ -390,13 +402,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         curr_ee_goal_cart_world_offset = forces_offset / self.gripper_force_kps + self.curr_ee_goal_cart_world
         ee_goal_offset_local_cart = quat_rotate_inverse(self.base_yaw_quat, curr_ee_goal_cart_world_offset - self.get_ee_goal_spherical_center())
         ee_goal_offset_local_sphere = cart2sphere(ee_goal_offset_local_cart)
-
-        # forces_global_base = self.forces[:, self.robot_base_idx, 0:3]
-        # forces_local_base = quat_rotate_inverse(self.base_yaw_quat, forces_global_base).view(self.num_envs, 3)
-    
-        # forces_cmd_local_base = self.current_Fxyz_base_cmd
-        # forces_offset_base = (forces_local_base + forces_cmd_local_base)
-        # base_lin_vel_offset = (forces_offset_base / self.base_force_kds)[:, :2] + self.commands[:, :2]
 
         self.privileged_obs_buf = torch.cat((
                                     self.base_lin_vel * self.obs_scales.lin_vel, # 3
@@ -569,12 +574,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             plt.pause(0.001)
             # print(self.commands)
     def _draw_collision_bbox(self):
-        # center = self.get_ee_goal_spherical_center()
-        # bbox0 = center + quat_apply(self.base_yaw_quat, self.collision_upper_limits)
-        # bbox1 = center + quat_apply(self.base_yaw_quat, self.collision_lower_limits)
-        # bboxes = torch.stack([bbox0, bbox1], dim=1)
-        # sphere_geom = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(1, 1, 0))
-        # import ipdb; ipdb.set_trace()
 
         center = self.ee_goal_center_offset
         bbox0 = center + self.collision_upper_limits
@@ -589,11 +588,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             pose0 = gymapi.Transform(gymapi.Vec3(self.root_states[i, 0], self.root_states[i, 1], 0), r=r)
             gymutil.draw_lines(bbox_geom, self.gym, self.viewer, self.envs[i], pose=pose0) 
 
-            # pose0 = gymapi.Transform(gymapi.Vec3(bboxes[i, ww 0, 0], bboxes[i, 0, 1], bboxes[i, 0, 2]))    
-            # pose1 = gymapi.Transform(gymapi.Vec3(bboxes[i, 1, 0], bboxes[i, 1, 1], bboxes[i, 1, 2]))
-            # gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], pose=pose0)
-            # gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], pose=pose1)
-
+           
     def _draw_ee_goal_curr(self):
         """ Draws visualizations for dubugging (slows down simulation a lot).
             Default behaviour: draws height measurement points
@@ -1132,6 +1127,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 self.force_target_gripper_cmd[new_selected_env_ids_cmd, 1] = torch_rand_float(min_force_cmd, max_force_cmd, (len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd))
                 self.force_target_gripper_cmd[new_selected_env_ids_cmd, 2] = torch_rand_float(min_force_cmd, max_force_cmd, (len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd))
                 push_duration_gripper_cmd = torch_rand_float(self.push_duration_gripper_cmd_min, self.push_duration_gripper_cmd_max, (len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd)) # 4.0/self.dt
+                push_duration_gripper_cmd = torch.clip(push_duration_gripper_cmd, max=(self.push_interval_gripper_cmd[new_selected_env_ids_cmd, 0] - self.settling_time_force_gripper)/2).to(self.device)
                 self.push_end_time_gripper_cmd[new_selected_env_ids_cmd] = self.episode_length_buf[new_selected_env_ids_cmd] + push_duration_gripper_cmd
                 self.push_duration_gripper_cmd[new_selected_env_ids_cmd] = push_duration_gripper_cmd
                 
@@ -1165,7 +1161,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                     self.commands[env_ids_apply_push_step2, INDEX_EE_FORCE_Z] = self.current_Fxyz_gripper_cmd[env_ids_apply_push_step2, 2]
                     
                 # Reset the tensors
-                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_gripper_cmd == 1] >= (2*self.push_end_time_gripper_cmd[self.selected_env_ids_gripper_cmd == 1] + self.settling_time_force_gripper).type(torch.int32)]                                        
+                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_gripper_cmd == 1] >= (self.push_end_time_gripper_cmd[self.selected_env_ids_gripper_cmd == 1] + self.settling_time_force_gripper + self.push_duration_gripper_cmd[self.selected_env_ids_gripper_cmd == 1]).type(torch.int32)]
                 if env_ids_to_reset.nelement() > 0:
                     self.selected_env_ids_gripper_cmd[env_ids_to_reset] = 0
                     self.force_target_gripper_cmd[env_ids_to_reset, :3] = 0.
@@ -1202,6 +1198,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 self.force_target_gripper_ext[new_selected_env_ids_ext, 1] = torch_rand_float(min_force_ext, max_force_ext, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext))
                 self.force_target_gripper_ext[new_selected_env_ids_ext, 2] = torch_rand_float(min_force_ext, max_force_ext, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext))
                 push_duration_gripper_ext = torch_rand_float(self.push_duration_gripper_ext_min, self.push_duration_gripper_ext_max, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext)) # 4.0/self.dt
+                push_duration_gripper_ext = torch.clip(push_duration_gripper_ext, max=(self.push_interval_gripper_ext[new_selected_env_ids_ext, 0] - self.settling_time_force_gripper)/2).to(self.device)
                 self.push_end_time_gripper_ext[new_selected_env_ids_ext] = self.episode_length_buf[new_selected_env_ids_ext] + push_duration_gripper_ext
                 self.push_duration_gripper_ext[new_selected_env_ids_ext] = push_duration_gripper_ext
                 
@@ -1229,7 +1226,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 
                     
                 # Reset the tensors
-                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_gripper_ext == 1] >= (2*self.push_end_time_gripper_ext[self.selected_env_ids_gripper_ext == 1] + self.settling_time_force_gripper).type(torch.int32)]                                        
+                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_gripper_ext == 1] >= (self.push_end_time_gripper_ext[self.selected_env_ids_gripper_ext == 1] + self.settling_time_force_gripper + self.push_duration_gripper_ext[self.selected_env_ids_gripper_ext == 1]).type(torch.int32)]                                        
                 if env_ids_to_reset.nelement() > 0:
                     self.selected_env_ids_gripper_ext[env_ids_to_reset] = 0
                     self.force_target_gripper_ext[env_ids_to_reset, :3] = 0.
@@ -1266,6 +1263,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 self.force_target_base_cmd[new_selected_env_ids_cmd, 1] = torch_rand_float(min_force_cmd, max_force_cmd, (len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd))
                 self.force_target_base_cmd[new_selected_env_ids_cmd, 2] = torch.zeros((len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd))
                 push_duration_base_cmd = torch_rand_float(self.push_duration_base_cmd_min, self.push_duration_base_cmd_max, (len(new_selected_env_ids_cmd), 1), device=self.device).view(len(new_selected_env_ids_cmd)) # 4.0/self.dt
+                push_duration_base_cmd = torch.clip(push_duration_base_cmd, max=(self.push_interval_base_cmd[new_selected_env_ids_cmd, 0] - self.settling_time_force_base)/2).to(self.device)
                 self.push_end_time_base_cmd[new_selected_env_ids_cmd] = self.episode_length_buf[new_selected_env_ids_cmd] + push_duration_base_cmd
                 self.push_duration_base_cmd[new_selected_env_ids_cmd] = push_duration_base_cmd
                 
@@ -1299,7 +1297,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                     self.commands[env_ids_apply_push_step2, INDEX_BASE_FORCE_Z] = self.current_Fxyz_base_cmd[env_ids_apply_push_step2, 2]
                     
                 # Reset the tensors
-                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_base_cmd == 1] >= (2*self.push_end_time_base_cmd[self.selected_env_ids_base_cmd == 1] + self.settling_time_force_base).type(torch.int32)]                                        
+                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_base_cmd == 1] >= (self.push_end_time_base_cmd[self.selected_env_ids_base_cmd == 1] + self.settling_time_force_base + self.push_duration_base_cmd[self.selected_env_ids_base_cmd == 1]).type(torch.int32)]
                 if env_ids_to_reset.nelement() > 0:
                     self.selected_env_ids_base_cmd[env_ids_to_reset] = 0
                     self.force_target_base_cmd[env_ids_to_reset, :3] = 0.
@@ -1341,6 +1339,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 self.force_target_base_ext[new_selected_env_ids_ext, 1] = torch_rand_float(min_force_ext, max_force_ext, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext))
                 self.force_target_base_ext[new_selected_env_ids_ext, 2] = torch_rand_float(min_force_ext, max_force_ext, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext)) * self.cfg.commands.force_z_base_ext_scale
                 push_duration_base_ext = torch_rand_float(self.push_duration_base_ext_min, self.push_duration_base_ext_max, (len(new_selected_env_ids_ext), 1), device=self.device).view(len(new_selected_env_ids_ext)) # 4.0/self.dt
+                push_duration_base_ext = torch.clip(push_duration_base_ext, max=(self.push_interval_base_ext[new_selected_env_ids_ext, 0] - self.settling_time_force_base)/2).to(self.device)
                 self.push_end_time_base_ext[new_selected_env_ids_ext] = self.episode_length_buf[new_selected_env_ids_ext] + push_duration_base_ext
                 self.push_duration_base_ext[new_selected_env_ids_ext] = push_duration_base_ext
                 
@@ -1368,7 +1367,7 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 
                     
                 # Reset the tensors
-                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_base_ext == 1] >= (2*self.push_end_time_base_ext[self.selected_env_ids_base_ext == 1] + self.settling_time_force_base).type(torch.int32)]                                        
+                env_ids_to_reset = subset_env_ids_selected[self.episode_length_buf[self.selected_env_ids_base_ext == 1] >= (self.push_end_time_base_ext[self.selected_env_ids_base_ext == 1] + self.settling_time_force_base + self.push_duration_base_ext[self.selected_env_ids_base_ext == 1]).type(torch.int32)]
                 if env_ids_to_reset.nelement() > 0:
                     self.selected_env_ids_base_ext[env_ids_to_reset] = 0
                     self.force_target_base_ext[env_ids_to_reset, :3] = 0.
