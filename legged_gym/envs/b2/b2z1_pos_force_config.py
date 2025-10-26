@@ -1,7 +1,7 @@
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 import numpy as np
 
-class B2Z1PosForceEERealRobotRoughCfg( LeggedRobotCfg ):
+class B2Z1PosForceRoughCfg( LeggedRobotCfg ):
 
     class goal_ee:
         
@@ -355,7 +355,7 @@ class B2Z1PosForceEERealRobotRoughCfg( LeggedRobotCfg ):
             tracking_ee_orn = 0.
             tracking_ee_orn_ry = 0.
 
-class B2Z1PosForceEERealRobotRoughCfgPPO( LeggedRobotCfgPPO ):
+class B2Z1PosForceRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
     class policy:
@@ -363,6 +363,6 @@ class B2Z1PosForceEERealRobotRoughCfgPPO( LeggedRobotCfgPPO ):
         critic_hidden_dims = [512, 256, 128]
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'b2z1_pos_force_realrobot'
+        experiment_name = 'b2z1_pos_force'
 
   
