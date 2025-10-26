@@ -1,9 +1,22 @@
 # UniFP - Unified Force and Position Control
 
-[![IsaacGym](https://img.shields.io/badge/IsaacGym-1.0.0-silver.svg)](https://developer.nvidia.com/isaac-gym)
+
+<div align="center">
+Conference on Robot Learning (CoRL) 2025 Best paper
+
+[[Website]](https://unified-force.github.io/)
+[[Arxiv]](https://arxiv.org/pdf/2505.20829)
+[[Oral Talk]](https://youtu.be/9lzFVQoc4Do?t=2652)
+
+<p align="center">
+    <img src="imgs/CMU-NV-logo-crop-png.png" height=50"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+</p>
+
+[![IsaacGym](https://img.shields.io/badge/IsaacGym-Preview4-b.svg)](https://developer.nvidia.com/isaac-gym)
 [![Python](https://img.shields.io/badge/python-3.8-blue.svg)](https://docs.python.org/3/whatsnew/3.8.html)
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/20.04/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-1.12.0-red.svg)](https://pytorch.org/)
+
+</div>
 
 ## Overview
 
