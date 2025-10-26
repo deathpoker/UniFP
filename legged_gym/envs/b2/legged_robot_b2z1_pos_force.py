@@ -68,8 +68,7 @@ class LeggedRobot_b2z1_pos_force(BaseTask):
             self.FR_joint_index = 5
             self.RL_joint_index = 8
             self.RR_joint_index = 11
-            # 初始化绘图
-            plt.ion()  # 打开交互模式
+            plt.ion() 
             fig, ((self.ax1, self.ax4), (self.ax2, self.ax5), (self.ax3, self.ax6)) = plt.subplots(3, 2)
             self.t_data, self.FL_action, self.FL_state, self.FL_ref, self.FR_action, self.FR_state, self.FR_ref = [], [], [], [], [], [], []
             self.RL_action, self.RL_state, self.RL_ref, self.RR_action, self.RR_state, self.RR_ref = [], [], [], [], [], []
@@ -461,7 +460,6 @@ class LeggedRobot_b2z1_pos_force(BaseTask):
     def _draw_curve(self):
         if self.debug_curve:
 
-            # 设置绘图范围
             self.ax1.set_ylim(self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()-1.5, self.default_dof_pos_wo_gripper[0, self.FL_joint_index].item()+1.5)
             self.ax1.set_title(f"FL_joint_{self.FL_joint_index}")
             self.ax1.set_xlabel("time / s")
@@ -520,7 +518,6 @@ class LeggedRobot_b2z1_pos_force(BaseTask):
                 self.RR_action.pop(0)
                 self.RR_state.pop(0)
                 self.RR_ref.pop(0)
-            # 更新绘图
             self.FL_action_line.set_data(self.t_data, self.FL_action)
             self.FL_state_line.set_data(self.t_data, self.FL_state)
             self.FL_ref_line.set_data(self.t_data, self.FL_ref)

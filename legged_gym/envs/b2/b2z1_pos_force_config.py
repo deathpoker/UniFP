@@ -268,84 +268,39 @@ class B2Z1PosForceRoughCfg( LeggedRobotCfg ):
 
         sigma_force = 1/50
         
-        class scales: # ( ManipLocoCfg.rewards.scales ):
-            # reference motion tracking
+        class scales:
+
             feet_contact_number = 2.0
-            # feet_contact_number_walking = 2.0
-            # feet_contact_number_standing = 1.5
-            
-            # tracking_lin_vel = 2. # 1.5  # track x轴方向速度
+
             tracking_lin_vel_force_world = 2.0
-            # tracking_lin_vel_x_l1 = 0.
-            # tracking_lin_vel_x_exp = 0
-            tracking_ang_vel = 1.0 # just for yaw # track 旋转速度
+            tracking_ang_vel = 1.0 
 
-            # lin_penalty = -1.0
-            # ang_penalty = -1.0
-            # delta_torques = -1.0e-6 # 惩罚力量大小变化
-            # work = 0
-            # energy = -1e-6
-            # energy_square = -5e-8
-            # energy_square_stand = -1e-7
-            # energy_square_arm = -5e-7
-            torques = -5.e-6 # -1e-5 # 惩罚力量大小
-            stand_still = 0.5 #1.5 #走路指令是0的时候，dof pose尽可能和default pos一样
-            # walking_dof = 1.0 # 和上面一样
-            # walking_ref_dof = 1.0
+            torques = -5.e-6 
+            stand_still = 0.5 
             ref_dof_leg = 1.0
-            # walking_ref_swing_dof = 2.0
-            # walking_ref_stand_dof = 2.0
-            # joint_pos = 1.6
-            # dof_default_pos = 0.0
-            # dof_error = 0.0 # -0.06 # -0.04
             alive = 1.5
-            lin_vel_z = -1.5 #b2沿着z轴的速度越小越好
-            # roll = -0.5 #惩罚b2侧身旋转
-            # pitch = -0.1
-            
-            # # tracking_ang_pitch_vel = 0.5 # New reward, only useful when pitch_control = True
-
-            # # common rewards
-            feet_air_time = 1.0 # 奖励脚腾空时间
-            feet_height = 1.0 # 奖励脚腾空高度
-            # feet_hind_height = 1.0 # 奖励后腿脚腾空高度
-            ang_vel_xy = -0.02 # -0.1 # 惩罚过快的转弯速度
-            dof_acc = -2.5e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
+            lin_vel_z = -1.5 
+            feet_air_time = 1.0 
+            feet_height = 1.0 
+            ang_vel_xy = -0.02 
+            dof_acc = -2.5e-7 
             dof_vel = -8.e-4
-            dof_acc_arm = -4.5e-7 #-2.5e-7 # -0.1 # 惩罚过快的joint 加速度
+            dof_acc_arm = -4.5e-7 
             dof_vel_arm = -2.e-4
-            collision = -5. # 惩罚大腿小腿躯干触地
-            # action_smoothness = -0.02
-            action_rate = -0.02 # 惩罚action 变化速度
-            action_rate_arm = -0.045 # 惩罚action 变化速度
-            dof_pos_limits = -10.0 #惩罚 超过限位角度
+            collision = -5. 
+            action_rate = -0.02 
+            action_rate_arm = -0.045 
+            dof_pos_limits = -10.0 
             torque_limits = -0.005
-            hip_pos = -0.5  # 惩罚髋关节与default pos的差别
-            # feet_jerk = -0.0002 # 惩罚关节力抽抽
-            feet_drag = -0.0008 # 惩罚脚拖地滑行
-            feet_contact_forces = -0.001 # 惩罚大于 max_contact_force的关节力量
-            # orientation = 0.0
-            # orientation_walking = 0.0
-            # orientation_standing = 0.0
-            base_height = -2.0 #惩罚不是  
-            # torques_walking = 0.0
-            # torques_standing = 0.0
-            # energy_square_walking = 0.0
-            # energy_square_standing = 0.0
-            # base_height_walking = 0.0
-            # base_height_standing = 0.0
-            # penalty_lin_vel_y = 0.#-10.
-            
-            # symmetry
+            hip_pos = -0.5  
+            feet_drag = -0.0008 
+            feet_contact_forces = -0.001 
+            base_height = -2.0
             feet_pos_xy = -0.5
-            # feet_height_symmetry = -0.05
             feet_height_high = -15
             
-
-            # arm_scales:
             arm_termination = 0.
             tracking_ee_sphere = 0.
-            # tracking_ee_world = 2.0
             tracking_ee_force_world = 2.0
             tracking_ee_sphere_walking = 0.0
             tracking_ee_sphere_standing = 0.0
