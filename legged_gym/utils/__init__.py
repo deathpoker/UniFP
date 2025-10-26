@@ -5,6 +5,4 @@ from .helpers import class_to_dict, get_load_path, get_args, export_policy_as_ji
 from .task_registry_b2z1posforce import task_registry_b2z1posforce
 from .logger import Logger
 from .math import *
-from .terrain import Terrain
-from .terrain_humanoidgym import HumanoidTerrain
 from .terrain_b2 import Terrain_Perlin

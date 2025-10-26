@@ -239,7 +239,7 @@ class B2Z1PosForceEERealRobotRoughCfg( LeggedRobotCfg ):
         grasp_offset = 0.08
 
     class asset( LeggedRobotCfg.asset ):
-        file = '/home/peiyang/project/unitree/b2z1/WBC/resources/robots/b2z1/b2z1_new.urdf'
+        file = '../../resources/robots/b2z1/b2z1.urdf'
         name = "b2z1"
         foot_name = "foot"
         thigh_name = "thigh"
