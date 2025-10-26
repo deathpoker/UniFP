@@ -45,26 +45,33 @@ This project implements a reinforcement learning-based whole body control framew
 
 ### Installation Steps
 
-1. **Set up the environment**
-   ```bash
-   conda create -n b1z1 python=3.8 
-   # isaacgym requires python <=3.8
-   conda activate b1z1
-   # Download the Isaac Gym binaries from https://developer.nvidia.com/isaac-gym 
-   cd isaacgym/python && pip install -e .
-   ```
-
-2. **Clone this project**
+1. **Clone this project**
    ```bash
    git clone https://github.com/deathpoker/UniFP.git
    cd UniFP
    ```
 
+2. **Set up the environment**
+   ```bash
+   conda create -n unifp python=3.8 
+   # isaacgym requires python <=3.8
+   conda activate unifp
+   # Download the Isaac Gym binaries from https://developer.nvidia.com/isaac-gym 
+   wget https://developer.nvidia.com/isaac-gym-preview-4
+   tar -xvzf isaac-gym-preview-4
+   
+   cd isaacgym/python && pip install -e .
+   ```
+    For libpython error:
+    - Set LD_LIBRARY_PATH:
+        ```bash
+        export LD_LIBRARY_PATH=</path/to/conda/envs/your_env/lib>:$LD_LIBRARY_PATH
+        ```
+
 3. **Install Python dependencies**
    ```bash
-   
-   # Install PyTorch (select based on CUDA version)
-   conda install pytorch==1.12.0 torchvision==0.13.0 torchaudio==0.12.0 cudatoolkit=11.3 -c pytorch
+   # Install PyTorch
+   conda install pytorch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 pytorch-cuda=12.1 -c pytorch -c nvidia
    
    # Install other dependencies
    pip install numpy matplotlib wandb
@@ -78,7 +85,7 @@ This project implements a reinforcement learning-based whole body control framew
 #### B2Z1 Position-Force Control Training
 ```bash
 cd legged_gym/scripts
-python train_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --headless
+python train_b2z1posforce.py --task=b2z1_pos_force --headless
 ```
 
 ### Policy Evaluation and Testing
@@ -86,7 +93,7 @@ python train_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --headless
 #### Run Trained Policies
 ```bash
 # B2Z1 position-force control testing
-python play_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --load_run=<run_name>
+python play_b2z1posforce.py --task=b2z1_pos_force --load_run=<run_name>
 
 # B2Z1 force control testing
 python play_b2z1force.py --task=b2z1_force_realrobot --load_run=<run_name>
@@ -95,14 +102,14 @@ python play_b2z1force.py --task=b2z1_force_realrobot --load_run=<run_name>
 #### Visualize Prediction Results
 ```bash
 # Enable visualization prediction
-python play_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --load_run=<run_name>
+python play_b2z1posforce.py --task=b2z1_pos_force --load_run=<run_name>
 # Set VISUAL_PRED = True in the script
 ```
 
 ### Parameter Configuration
 
 #### Training Parameters
-- `--task`: Task name (b2z1_pos_force_ee_realrobot, b2z1_force_realrobot, h1, g1_humanoidgym, etc.)
+- `--task`: Task name (b2z1_pos_force, b2z1_force_realrobot, h1, g1_humanoidgym, etc.)
 - `--headless`: Run in headless mode
 - `--num_envs`: Number of parallel environments
 - `--max_iterations`: Maximum training iterations
@@ -115,13 +122,13 @@ python play_b2z1posforce.py --task=b2z1_pos_force_ee_realrobot --load_run=<run_n
 
 ### Core Components
 
-- **Environment Configuration** (`legged_gym/envs/b2/b2z1_pos_force_ee_realrobot_config.py`)
+- **Environment Configuration** (`legged_gym/envs/b2/b2z1_pos_force_config.py`)
   - Robot initial state configuration
   - Reward function parameters
   - Observation space definition
   - Action space definition
 
-- **Environment Implementation** (`legged_gym/envs/b2/legged_robot_b2z1_pos_force_ee_realrobot.py`)
+- **Environment Implementation** (`legged_gym/envs/b2/legged_robot_b2z1_pos_force.py`)
   - Simulation environment logic
   - Reward calculation
   - Observation space construction

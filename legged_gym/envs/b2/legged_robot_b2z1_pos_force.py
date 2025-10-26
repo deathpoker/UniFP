@@ -17,7 +17,7 @@ from legged_gym.envs.base.base_task import BaseTask
 from legged_gym.utils.math import wrap_to_pi
 from legged_gym.utils.helpers import class_to_dict
 from legged_gym.utils.terrain import Terrain, Terrain_Perlin
-
+from legged_gym.utils.isaacgym_utils import euler_from_quat, sphere2cart, cart2sphere
 from legged_gym.envs.b2.b2z1_pos_force_config import B2Z1PosForceRoughCfg
 
 import matplotlib.pyplot as plt

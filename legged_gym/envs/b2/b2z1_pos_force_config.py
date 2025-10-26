@@ -239,7 +239,7 @@ class B2Z1PosForceRoughCfg( LeggedRobotCfg ):
         grasp_offset = 0.08
 
     class asset( LeggedRobotCfg.asset ):
-        file = '../../resources/robots/b2z1/b2z1.urdf'
+        file = 'resources/robots/b2z1/b2z1.urdf'
         name = "b2z1"
         foot_name = "foot"
         thigh_name = "thigh"
