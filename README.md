@@ -9,7 +9,7 @@ Conference on Robot Learning (CoRL) 2025 Best paper
 [[Oral Talk]](https://youtu.be/9lzFVQoc4Do?t=2652)
 
 <p align="center">
-    <img src="docs/teaser.jpg" height=30"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+    <img src="docs/teaser.jpg" height=400px"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
 </p>
 
 [![IsaacGym](https://img.shields.io/badge/IsaacGym-Preview4-b.svg)](https://developer.nvidia.com/isaac-gym)
