@@ -9,7 +9,7 @@ Conference on Robot Learning (CoRL) 2025 Best paper
 [[Oral Talk]](https://youtu.be/9lzFVQoc4Do?t=2652)
 
 <p align="center">
-    <img src="imgs/CMU-NV-logo-crop-png.png" height=50"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+    <img src="docs/teaser.jpg" height=30"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
 </p>
 
 [![IsaacGym](https://img.shields.io/badge/IsaacGym-Preview4-b.svg)](https://developer.nvidia.com/isaac-gym)
@@ -28,6 +28,12 @@ This project implements a reinforcement learning-based whole body control framew
 - Reinforcement learning training based on PPO algorithm
 - Support for multiple robot configurations (B2Z1, G1, etc.)
 - Complete simulation-to-real deployment pipeline
+
+## TODO
+- [x] Release UniFP training pipeline
+- [ ] Release sim2real with ROS2
+- [ ] Release sim2sim in MuJoCo
+- [ ] Release imitation learing data collection pipeline
 
 ## Installation
 
