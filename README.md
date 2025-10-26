@@ -94,16 +94,6 @@ python train_b2z1posforce.py --task=b2z1_pos_force --headless
 ```bash
 # B2Z1 position-force control testing
 python play_b2z1posforce.py --task=b2z1_pos_force --load_run=<run_name>
-
-# B2Z1 force control testing
-python play_b2z1force.py --task=b2z1_force_realrobot --load_run=<run_name>
-```
-
-#### Visualize Prediction Results
-```bash
-# Enable visualization prediction
-python play_b2z1posforce.py --task=b2z1_pos_force --load_run=<run_name>
-# Set VISUAL_PRED = True in the script
 ```
 
 ### Parameter Configuration
