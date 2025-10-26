@@ -16,9 +16,9 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 from legged_gym.envs.base.base_task import BaseTask
 from legged_gym.utils.math import wrap_to_pi
 from legged_gym.utils.helpers import class_to_dict
-from legged_gym.utils.terrain_b2 import Terrain, Terrain_Perlin
+from legged_gym.utils.terrain import Terrain, Terrain_Perlin
 
-from legged_gym.envs.b2.b2z1_pos_force_ee_realrobot_config import B2Z1PosForceEERealRobotRoughCfg
+from legged_gym.envs.b2.b2z1_pos_force_config import B2Z1PosForceRoughCfg
 
 import matplotlib.pyplot as plt
 
@@ -44,8 +44,8 @@ def get_euler_xyz_tensor(quat):
     euler_xyz[euler_xyz > np.pi] -= 2 * np.pi
     return euler_xyz
 
-class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
-    def __init__(self, cfg: B2Z1PosForceEERealRobotRoughCfg, sim_params, physics_engine, sim_device, headless):
+class LeggedRobot_b2z1_pos_force(BaseTask):
+    def __init__(self, cfg: B2Z1PosForceRoughCfg, sim_params, physics_engine, sim_device, headless):
         """ Parses the provided config file,
             calls create_sim() (which creates, simulation and environments),
             initilizes pytorch buffers used during training
@@ -105,40 +105,14 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             actions (torch.Tensor): Tensor of shape (num_envs, num_actions_per_env)
         """
 
-        # actions = torch.zeros_like(actions, device=actions.device, dtype=actions.dtype)
-        
-        # actions[:, 12:] = 0.
-
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
 
-        # arm_pos_targets = self.actions * self.cfg.control.action_scale + self.default_dof_pos_wo_gripper
-
-        # all_pos_targets = torch.zeros_like(self.dof_pos)
-        # all_pos_targets[:, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints] = arm_pos_targets[:, -6:]
-
-        # step physics and render each frame
         if not self.headless:
             self.render()
 
-        # arm ik actions
-        # uncomment this if needing to mask out gripper joints
-        # self.curr_ee_goal_cart[:] = sphere2cart(self.curr_ee_goal_sphere)
-        # ee_goal_cart_yaw_global = quat_apply(self.base_yaw_quat, self.curr_ee_goal_cart)
-        # curr_ee_goal_cart_world = self.get_ee_goal_spherical_center() + ee_goal_cart_yaw_global
-        
-        # dpos = self.curr_ee_goal_cart_world - self.ee_pos
-        # drot = orientation_error(self.ee_goal_orn_quat, self.ee_orn / torch.norm(self.ee_orn, dim=-1).unsqueeze(-1))
-        # dpose = torch.cat([dpos, drot], -1).unsqueeze(-1)
-        # print(self.ee_goal_orn_quat[0], self.ee_orn[0])
-        # arm_pos_targets = self.control_ik(dpose) + self.dof_pos[:, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints]
-        # all_pos_targets = torch.zeros_like(self.dof_pos)
-        # all_pos_targets[:, -(6 + self.cfg.env.num_gripper_joints):-self.cfg.env.num_gripper_joints] = arm_pos_targets
-
-        # breakpoint()
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions)
-            # self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(all_pos_targets))
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
             if self.cfg.env.test:
                 elapsed_time = self.gym.get_elapsed_time(self.sim)
@@ -428,9 +402,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                                     ee_goal_offset_local_sphere[:, 0:1] * self.obs_scales.ee_sphe_radius_cmd, 
                                     ee_goal_offset_local_sphere[:, 1:2] * self.obs_scales.ee_sphe_pitch_cmd,
                                     ee_goal_offset_local_sphere[:, 2:3] * self.obs_scales.ee_sphe_yaw_cmd, # 3
-                                    # ee_goal_local_cart,  # dim 3 position
-                                    # ee_pos_sphe_arm, # 3
-                                    # self.curr_ee_goal_sphere,  # dim 3 orientation
                                     ),dim=-1)
         obs_pred = torch.cat((
                                     self.base_lin_vel * self.obs_scales.lin_vel, # 3
@@ -449,8 +420,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                                     sin_pos, # 1
                                     cos_pos, # 1
                                     (self.commands * self.commands_scale)[:, :15], # dim 15
-                                    # ee_goal_local_cart,  # dim 3 position
-                                    # self.curr_ee_goal_sphere  # dim 3 orientation
                                     ),dim=-1)
         
         # add perceptive inputs if not blind
@@ -725,13 +694,10 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             ee_target_cart = sphere2cart(ee_target_all_sphere[..., i])
             ee_target_all_cart_world[..., i] = quat_apply(self.base_yaw_quat, ee_target_cart)
         ee_target_all_cart_world += self.get_ee_goal_spherical_center()[:, :, None]
-        # curr_ee_goal_cart_world = quat_apply(self.base_yaw_quat, self.curr_ee_goal_cart) + self.root_states[:, :3]
         for i in range(self.num_envs):
             for j in range(10):
                 pose = gymapi.Transform(gymapi.Vec3(ee_target_all_cart_world[i, 0, j], ee_target_all_cart_world[i, 1, j], ee_target_all_cart_world[i, 2, j]), r=None)
                 gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], pose)
-            # pose_curr = gymapi.Transform(gymapi.Vec3(curr_ee_goal_cart_world[i, 0], curr_ee_goal_cart_world[i, 1], curr_ee_goal_cart_world[i, 2]), r=None)
-            # gymutil.draw_lines(sphere_geom_yellow, self.gym, self.viewer, self.envs[i], pose_curr)
 
     #------------- Callbacks --------------
     def _process_rigid_shape_props(self, props, env_id):
@@ -793,26 +759,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         return props
 
     def _randomize_dof_props(self, env_ids):
-        # if self.cfg.domain_rand.randomize_motor_strength:
-        #     min_strength, max_strength = self.cfg.domain_rand.motor_strength_range
-        #     self.motor_strengths[env_ids, :] = torch.rand(len(env_ids), dtype=torch.float, device=self.device,
-        #                                              requires_grad=False).unsqueeze(1) * (
-        #                                           max_strength - min_strength) + min_strength
-        # if self.cfg.domain_rand.randomize_motor_offset:
-        #     min_offset, max_offset = self.cfg.domain_rand.motor_offset_range
-        #     self.motor_offsets[env_ids, :] = torch.rand(len(env_ids), self.num_dof, dtype=torch.float,
-        #                                                 device=self.device, requires_grad=False) * (
-        #                                              max_offset - min_offset) + min_offset
-        # if self.cfg.domain_rand.randomize_Kp_factor:
-        #     min_Kp_factor, max_Kp_factor = self.cfg.domain_rand.Kp_factor_range
-        #     self.Kp_factors[env_ids, :] = torch.rand(len(env_ids), dtype=torch.float, device=self.device,
-        #                                              requires_grad=False).unsqueeze(1) * (
-        #                                           max_Kp_factor - min_Kp_factor) + min_Kp_factor
-        # if self.cfg.domain_rand.randomize_Kd_factor:
-        #     min_Kd_factor, max_Kd_factor = self.cfg.domain_rand.Kd_factor_range
-        #     self.Kd_factors[env_ids, :] = torch.rand(len(env_ids), dtype=torch.float, device=self.device,
-        #                                              requires_grad=False).unsqueeze(1) * (
-        #                                           max_Kd_factor - min_Kd_factor) + min_Kd_factor
         if self.cfg.commands.randomize_gripper_force_gains:
             min_kp, max_kp = self.cfg.commands.gripper_force_kp_range
             min_kd, max_kd = self.cfg.commands.gripper_force_kd_range
@@ -836,13 +782,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                                                     max_kd - min_kd) + min_kd
                 
     def _process_rigid_body_props(self, props, env_id):
-        # if env_id==0:
-        #     sum = 0
-        #     for i, p in enumerate(props):
-        #         sum += p.mass
-        #         print(f"Mass of body {i}: {p.mass} (before randomization)")
-        #     print(f"Total mass {sum} (before randomization)")
-        # randomize base mass
         if self.cfg.domain_rand.randomize_base_mass:
             rng = self.cfg.domain_rand.added_mass_range
             rand_mass = np.random.uniform(rng[0], rng[1], size=(1, ))
@@ -922,7 +861,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         # solve damped least squares
         j_eef_T = torch.transpose(self.ee_j_eef, 1, 2)
         lmbda = torch.eye(6, device=self.device) * (0.05 ** 2)
-        # u = (j_eef_T @ torch.inverse(self.ee_j_eef @ j_eef_T + lmbda) @ dpose).view(self.num_envs, 6)
         A = torch.bmm(self.ee_j_eef, j_eef_T) + lmbda[None, ...]
         u = torch.bmm(j_eef_T, torch.linalg.solve(A, dpose))#.view(self.num_envs, 6)
         return u.squeeze(-1)
@@ -942,8 +880,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         actions_scaled = actions * self.motor_strength * self.cfg.control.action_scale
 
         default_torques = self.p_gains * (actions_scaled + self.default_dof_pos_wo_gripper - self.dof_pos_wo_gripper) - self.d_gains * self.dof_vel_wo_gripper
-        # torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
-        # default_torques[:, -6:] = 0
         last_torque = 64. * (torch.zeros([actions_scaled.shape[0], 1], device=actions_scaled.device) + self.default_dof_pos[:, -2] - self.dof_pos[:, -2:-1]) - 1.5 * self.dof_vel[:, -2:-1]
         gripper_torque = 64. * (torch.zeros([actions_scaled.shape[0], 1], device=actions_scaled.device) + self.default_dof_pos[:, -1] - self.dof_pos[:, -1:]) - 1.5 * self.dof_vel[:, -1:]
         
@@ -972,8 +908,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
 
         if len(env_ids) > 0:
             init_env_ids = env_ids.clone()
-            
-            # arm_base_pos = self.base_pos + quat_apply(self.base_yaw_quat, self.arm_base_offset)
 
             ee_local_cart = quat_rotate_inverse(self.base_yaw_quat, self.ee_pos - self.get_ee_goal_spherical_center())
                     # Spherical to cartesian coordinates in the arm base frame 
@@ -999,7 +933,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                 else:
                     self._resample_ee_goal_orn_once(env_ids)
                     self.ee_start_sphere[env_ids] = self.ee_goal_sphere[env_ids].clone()
-                    # self.ee_start_sphere[env_ids] = ee_pos_sphe_arm[env_ids].clone()
                     for i in range(10):
                         self._resample_ee_goal_sphere_once(env_ids)
                         collision_mask = self.collision_check(env_ids)
@@ -1008,9 +941,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
                             break
             self.ee_goal_cart[init_env_ids, :] = sphere2cart(self.ee_goal_sphere[init_env_ids, :])
             self.goal_timer[init_env_ids] = 0.0
-
-        # self.ee_goal_cart[env_ids, :] = sphere2cart(self.ee_goal_sphere[env_ids, :])
-        # self.goal_timer[env_ids] = 0.0
 
     def collision_check(self, env_ids):
         ee_target_all_sphere = torch.lerp(self.ee_start_sphere[env_ids, ..., None], self.ee_goal_sphere[env_ids, ...,  None], self.collision_check_t).squeeze(-1)
@@ -1318,12 +1248,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             self.commands[self.freed_envs_base_cmd, INDEX_BASE_FORCE_Y] = 0.0
             self.commands[self.freed_envs_base_cmd, INDEX_BASE_FORCE_Z] = 0.0
 
-            # ee_position_error = torch.sum(torch.abs(ee_position_cmd_world - ee_pos_world), dim=1)
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.ee_position_cmd_world - self.ee_pos_world) * self.cfg.domain_rand.base_force_kp*3 +  (0 - self.base_velocity) * self.cfg.domain_rand.base_force_kd), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.curr_ee_goal_cart_world - self.ee_pos) * self.base_force_kps +  (0 - self.base_velocity) * self.base_force_kds), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.curr_ee_goal_cart_world - self.ee_pos) * 100), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            
-
             # ext force
             # FORCE CONTROLLED ENVS
             new_selected_env_ids_ext = env_ids_all[(self.episode_length_buf % self.push_interval_base_ext[:, 0]) == 0]
@@ -1380,11 +1304,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
             self.push_end_time_base_ext[self.freed_envs_base_ext] = 0.
             self.push_duration_base_ext[self.freed_envs_base_ext] = 0. 
 
-            # ee_position_error = torch.sum(torch.abs(ee_position_ext_world - ee_pos_world), dim=1)
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.ee_position_ext_world - self.ee_pos_world) * self.cfg.domain_rand.base_force_kp*3 +  (0 - self.base_velocity) * self.cfg.domain_rand.base_force_kd), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.curr_ee_goal_cart_world - self.ee_pos) * self.base_force_kps +  (0 - self.base_velocity) * self.base_force_kds), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            # self.forces[:, self.robot_base_idx, :3] = torch.clamp(((self.curr_ee_goal_cart_world - self.ee_pos) * 100), self.cfg.domain_rand.max_push_force_xyz_base_freed[0], self.cfg.domain_rand.max_push_force_xyz_base_freed[1])
-            
             self.forces[self.freed_envs_base_ext, self.robot_base_idx, :3] = 0
 
     def update_command_curriculum(self, env_ids):
@@ -1754,12 +1673,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         self.mass_params_tensor = torch.zeros(self.num_envs, 22, dtype=torch.float, device=self.device, requires_grad=False)
         
         for i in range(self.num_envs):
-            # arm_kp = 400
-            # # arm_kp = np.random.uniform(300,400)
-            
-            # dof_props_asset['driveMode'][12:].fill(gymapi.DOF_MODE_POS)  # set arm to pos control
-            # dof_props_asset['stiffness'][12:].fill(arm_kp)
-            # dof_props_asset['damping'][12:].fill(40.0)
 
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
@@ -1876,7 +1789,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         walking_mask2 = torch.abs(self.commands[env_ids, 2]) > self.cfg.commands.ang_vel_yaw_clip
         walking_mask = walking_mask0 | walking_mask1 | walking_mask2
 
-        # walking_mask = walking_mask | ((self.episode_length_buf * self.dt / self.cfg.rewards.cycle_time) % (2*torch.pi) >= self.dt / self.cfg.rewards.cycle_time)
         if return_all:
             return walking_mask0, walking_mask1, walking_mask2, walking_mask
         return walking_mask
@@ -1902,8 +1814,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         # FR RL foot stance
         stance_mask[:, 1] = sin_pos_r < 0
         stance_mask[:, 2] = sin_pos_r < 0
-        # Double support phase
-        # stance_mask[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = 1
 
         return stance_mask
     
@@ -1924,17 +1834,13 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         self.ref_dof_pos[:, 2] += sin_pos_l * scale_2 # FL_calf_joint
         self.ref_dof_pos[:, 10] -= sin_pos_l * scale_1 # RR_thigh_joint
         self.ref_dof_pos[:, 11] += sin_pos_l * scale_2 # RR_calf_joint
-        # self.ref_dof_pos[:, 4] += sin_pos_l * scale_1 # left_ankle
-        # right foot stance phase set to default joint pos
+
         sin_pos_r[sin_pos_r < 0] = sin_pos_r[sin_pos_r < 0] * (1 - self.cfg.rewards.target_joint_pos_thd) / (1 + self.cfg.rewards.target_joint_pos_thd) * 0.0
         self.ref_dof_pos[:, 4] += sin_pos_r * scale_1 # FR_thigh_joint
         self.ref_dof_pos[:, 5] -= sin_pos_r * scale_2 # FR_calf_joint
         self.ref_dof_pos[:, 7] += sin_pos_r * scale_1 # RL_thigh_joint
         self.ref_dof_pos[:, 8] -= sin_pos_r * scale_2 # RL_calf_joint
-        # self.ref_dof_pos[:, 9] -= sin_pos_r * scale_1 # right_ankle
-        # stand still phase
-        # self.ref_dof_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd] = repeat_default_pos[torch.abs(sin_pos) < self.cfg.rewards.target_joint_pos_thd]
-
+ 
     def subscribe_viewer_keyboard_events(self):
         super().subscribe_viewer_keyboard_events()
         if self.cfg.env.teleop_mode:
@@ -2171,7 +2077,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
     
     def _reward_feet_height(self):
         feet_height = self.rigid_state[:, self.feet_indices[:2], 2] # Only front feet
-        # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
         rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.10, max=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
@@ -2193,7 +2098,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
 
     def _reward_feet_hind_height(self):
         feet_height = self.rigid_state[:, self.feet_indices[2:], 2] # Only front feet
-        # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
         rew = torch.clamp(torch.max(feet_height, dim=-1)[0] - 0.10, max=0)
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0
@@ -2217,16 +2121,11 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
         
-    # def _reward_stand_still(self):
-    #     # Penalize motion at zero commands
-    #     return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
-
     def _reward_stand_still(self):
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
 
     def _reward_walking_dof(self):
@@ -2234,7 +2133,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         dof_error = torch.sum(torch.abs(self.dof_pos - self.default_dof_pos)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.05)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
     def _reward_walking_ref_dof(self):
@@ -2248,7 +2146,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.2)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
     def _reward_walking_ref_swing_dof(self):
@@ -2266,7 +2163,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         dof_error = torch.sum(dof_error, dim=1)
         rew = torch.exp(-dof_error*0.2)
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
     def _reward_walking_ref_stand_dof(self):
@@ -2284,7 +2180,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         dof_error = torch.sum(dof_error, dim=1)
         rew = torch.exp(-dof_error*0.5) - 1
         rew[~self.get_walking_cmd_mask()] = 0.
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
     
     def _reward_ref_dof_leg(self):
@@ -2297,7 +2192,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
         # Penalize motion at zero commands
         dof_error = torch.sum(torch.abs(joint_pos - pos_target)[:, :12], dim=1)
         rew = torch.exp(-dof_error*0.1)
-        # print(rew, dof_error, torch.abs(self.dof_pos - self.default_dof_pos)[:, :12])
         return rew
         
     def _reward_joint_pos(self):
@@ -2323,7 +2217,6 @@ class LeggedRobot_b2z1_pos_force_ee_realrobot(BaseTask):
     def _reward_feet_height_symmetry(self):
         # penalize asymmetry feet height
         feet_height = self.rigid_state[:, self.feet_indices, 2] # Only front feet
-        # rew = torch.clamp(torch.norm(feet_height, dim=-1) - 0.3, max=0)
         rew = abs(feet_height[:,0] - feet_height[:,3]) + abs(feet_height[:,1] - feet_height[:,2])
         cmd_stop_flag = ~self.get_walking_cmd_mask()
         rew[cmd_stop_flag] = 0

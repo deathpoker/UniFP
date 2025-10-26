@@ -1,14 +1,12 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 
 
-from legged_gym.envs.b2.b2z1_pos_force_ee_realrobot_config import B2Z1PosForceEERealRobotRoughCfg, B2Z1PosForceEERealRobotRoughCfgPPO
+from legged_gym.envs.b2.b2z1_pos_force_config import B2Z1PosForceRoughCfg, B2Z1PosForceRoughCfgPPO
 
 from .base.legged_robot import LeggedRobot
-# from .b2.legged_robot_b2z1_pos_force_realrobot import LeggedRobot_b2z1_pos_force_realrobot
-from .b2.legged_robot_b2z1_pos_force_ee_realrobot import LeggedRobot_b2z1_pos_force_ee_realrobot
+from .b2.legged_robot_b2z1_pos_force import LeggedRobot_b2z1_pos_force
 
-from legged_gym.utils.task_registry_b2z1posforce import task_registry_b2z1posforce
+from legged_gym.utils.task_registry import task_registry
 
 
-# task_registry_b2z1posforce.register( "b2z1_pos_force_realrobot", LeggedRobot_b2z1_pos_force_realrobot, B2Z1PosForceRealRobotRoughCfg(), B2Z1PosForceRealRobotRoughCfgPPO())
-task_registry_b2z1posforce.register( "b2z1_pos_force_ee_realrobot", LeggedRobot_b2z1_pos_force_ee_realrobot, B2Z1PosForceEERealRobotRoughCfg(), B2Z1PosForceEERealRobotRoughCfgPPO())
+task_registry.register( "b2z1_pos_force", LeggedRobot_b2z1_pos_force, B2Z1PosForceRoughCfg(), B2Z1PosForceRoughCfgPPO())

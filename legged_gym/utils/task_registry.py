@@ -41,7 +41,7 @@ from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from .helpers import get_args, update_cfg_from_args, class_to_dict, get_load_path, set_seed, parse_sim_params
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-class TaskRegistryB2Z1PosForce():
+class TaskRegistry():
     def __init__(self):
         self.task_classes = {}
         self.env_cfgs = {}
@@ -156,4 +156,4 @@ class TaskRegistryB2Z1PosForce():
         return runner, train_cfg
 
 # make global task registry
-task_registry_b2z1posforce = TaskRegistryB2Z1PosForce()
+task_registry = TaskRegistry()
